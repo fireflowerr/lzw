@@ -2,22 +2,16 @@ package encoders;
 
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
-
-/**
- * Hello world!
- *
- */
 public final class App
 {
     public static void main( String[] args )
     {
-      Dict<Character> dict = new Dict<>();
-      dict.add('a', -1, 0);
-      dict.add('b', -1, 1);
+      Dict<Pair<Character, Integer>, Integer> dict = new Dict<>();
+      dict.add(new Pair<>('a', -1), 0);
+      dict.add(new Pair<>('b', -1), 1);
 
       String test = "ababababa";
       Stream<Character> tStream = test.chars()
@@ -34,29 +28,35 @@ public final class App
     }
 
     //out
-    public static <A, B>  Stream<B> encode(IDictionary<A, B, B> dict, B bot, Stream<A> in) {
-      Iterator<A> itr = in.iterator();
+    public static <A> Stream<Integer> encode(
+        BidiDict<Pair<A, Integer>, Integer> dict
+      , Integer bot, Stream<A> in) {
 
+      Iterator<A> itr = in.iterator();
       A a = null;
-      B index = bot;
-      Optional<B> lup = Optional.of(index);
-      Stream.Builder<B> acc = Stream.builder();
+      Integer index = bot;
+      Optional<Integer> lup = Optional.of(index);
+      Stream.Builder<Integer> acc = Stream.builder();
 
       // LZW alg
       while(itr.hasNext()) {
 
         if(lup.isEmpty()) {
           acc.add(index);
-          dict.add(a, index, dict.nextIndex());
-          lup = dict.lookup(a, bot);
+          dict.add(new Pair<A, Integer>(a, index), Integer.valueOf(dict.size()));
+          lup = dict.lookup(new Pair<>(a, bot));
         } else {
           a = itr.next();
           index = lup.get();
-          lup = dict.lookup(a, index);
+          lup = dict.lookup(new Pair<>(a, index));
         }
       }
       lup.ifPresent(acc::add);
 
       return acc.build();
     }
+
+    //public static <B, A> Stream<B> decode(JDictionary<B, B, A> dict, Stream<B> in) {
+    //    return null;
+    //}
 }
