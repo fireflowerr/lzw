@@ -3,16 +3,16 @@ import java.util.Objects;
 
 // Instances of this class are immutable if both A and B are immutable
 public final class Pair<A, B> {
-  public final A a;
-  public final B b;
+  public final A fst;
+  public final B snd;
 
-  public Pair(A a, B b) {
-    this.a = a;
-    this.b = b;
+  public Pair(A fst, B snd) {
+    this.fst = fst;
+    this.snd = snd;
   }
 
   public Pair<B, A> flip() {
-    return new Pair<>(b, a);
+    return new Pair<>(snd, fst);
   }
 
   @Override
@@ -20,7 +20,7 @@ public final class Pair<A, B> {
   public boolean equals(Object o) {
     if(o instanceof Pair<?, ?>) {
       Pair<A, B> tmp = (Pair<A,B>)o;
-      return tmp.a == a && tmp.b == b;
+      return tmp.fst == fst && tmp.snd == snd;
     } else {
       return false;
     }
@@ -28,6 +28,6 @@ public final class Pair<A, B> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(a, b);
+    return Objects.hash(fst, snd);
   }
 }
