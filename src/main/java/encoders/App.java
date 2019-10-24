@@ -1,33 +1,42 @@
 package encoders;
+import encoders.lzw.*;
+import encoders.lzw.dict.*;
+import encoders.util.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 
-public final class App
-{
+public final class App {
 
-    public static void main( String[] args )
-    {
-      //Path p = Paths.get("test.txt");
-      //System.out.println(p.toAbsolutePath().toString());
+    public static void main( String[] args ) {
+      if(args.length == 0) {
+        System.err.println("err: expects file path as args");
+        System.exit(1);
+      }
+      String root = args[0];
 
-      //Stream<Character> fIn = null;
-      //try {
-      //  fIn = Streams.readFileChars(p, 256, StandardCharsets.UTF_8);
-      //} catch(IOException e) {
-      //  e.printStackTrace();
-      //}
-      //if(fIn != null) {
-      //System.out.println(fIn.findFirst().get());
-      //  String result = fIn .collect(Collector.of(
-      //      StringBuilder::new
-      //    , StringBuilder::append
-      //    , StringBuilder::append
-      //    , StringBuilder::toString));
+      if(args.length > 1) {
+        String[] tmp = args;
+        args = new String[args.length - 1];
+        System.arraycopy(tmp, 1, args, 0, tmp.length - 1);
+      }
+      for(String s : args) {
+        System.out.println(s);
+      }
+      Path p = Paths.get(root, args);
+
+      Stream<Character> fIn = null;
+      try {
+        fIn = Streams.readFileChars(p, 1024);
+      } catch (IOException e) {
+        e.printStackTrace();
+        System.exit(1);
+      }
 
       //  System.out.println(result);
       String test = "meowmeeeoooowmeowmowmeoowmoo";

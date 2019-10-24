@@ -27,7 +27,7 @@ public class Lzw {
     boolean alive = true;
     while(alive) {
 
-      while(lup.isPresent()) {
+      while(lup.isPresent()) { //find the longest matching dict entry
 
         index = lup.get();
         if((alive = itr.hasNext())) {
@@ -38,9 +38,9 @@ public class Lzw {
         }
       }
 
-      acc.add(index);
-      dict.add(new Pair<A, Integer>(a, index), dict.size());
-      lup = dict.lookup(new Pair<>(a, LZW_BOT));
+      acc.add(index); //add dict key to accumulator
+      dict.add(new Pair<>(a, index), dict.size()); //add previous key + unmatched sym to dict
+      lup = dict.lookup(new Pair<>(a, LZW_BOT)); //repeat lookup starting from unmatched
     }
 
     return acc.build();
@@ -75,14 +75,13 @@ public class Lzw {
         word.push(lupV.fst);
         lupV = dict.lookupUnsafe(lupV.snd);
       }
-
       prevA = lupV.fst;
 
-      acc.add(lupV.fst);
+      acc.add(lupV.fst); // add decoded word to acc
       while(!word.isEmpty()) { // based on openJDK source clear is O(n) so it is more effecient to combine tasks here
         acc.add(word.pop());
       }
-      dict.add(dict.size(), new Pair<>(lupV.fst, prevI));
+      dict.add(dict.size(), new Pair<>(lupV.fst, prevI)); // add next entry
 
     }
     return acc.build();

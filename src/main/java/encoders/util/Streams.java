@@ -34,6 +34,15 @@ import java.util.stream.StreamSupport;
 
 public class Streams {
 
+  // accumulates Stream of characters to String
+  public static String reudcetoStr(Stream<Character> s) {
+    return s.collect(Collector.of(
+      StringBuilder::new
+    , StringBuilder::append
+    , StringBuilder::append
+    , StringBuilder::toString));
+  }
+
   // convience method
   public static Stream<Character> readFileChars(final Path p, final int bSz) throws IOException {
     return readFileChars(p, bSz, StandardCharsets.UTF_8);
