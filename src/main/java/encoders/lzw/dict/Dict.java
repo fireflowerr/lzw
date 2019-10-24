@@ -1,4 +1,4 @@
-package encoders;
+package encoders.lzw.dict;
 
 import java.util.HashMap;
 import java.util.NoSuchElementException;

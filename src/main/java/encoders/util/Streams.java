@@ -1,10 +1,11 @@
-package encoders;
+package encoders.util;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -32,6 +33,11 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class Streams {
+
+  // convience method
+  public static Stream<Character> readFileChars(final Path p, final int bSz) throws IOException {
+    return readFileChars(p, bSz, StandardCharsets.UTF_8);
+  }
 
   // Abstracts the action of contiously reading from a BufferedReader to a Stream
   public static Stream<Character> readFileChars(final Path p, final int bSz, final Charset cs) throws IOException {

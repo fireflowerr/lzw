@@ -1,4 +1,4 @@
-package encoders;
+package encoders.util;
 import java.util.Objects;
 
 // Instances of this class are immutable if both A and B are immutable

@@ -1,4 +1,4 @@
-package encoders;
+package encoders.lzw.dict;
 import java.util.Optional;
 
 public interface BidiDict<K, V> { // for dictionaries whose key and value set are unique

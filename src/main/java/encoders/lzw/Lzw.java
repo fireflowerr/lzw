@@ -1,5 +1,7 @@
-package encoders;
+package encoders.lzw;
 
+import encoders.lzw.dict.*;
+import encoders.util.*;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Stream;
