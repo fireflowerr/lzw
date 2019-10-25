@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
 
 public class Streams {
 
-  // accumulates Stream of characters to String
+  // reduces Stream of characters to String
   public static String reudcetoStr(Stream<Character> s) {
     return s.collect(Collector.of(
       StringBuilder::new
@@ -102,7 +102,7 @@ public class Streams {
     };
 
     Stream<Character> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
-        (itr, Spliterator.ORDERED | Spliterator.NONNULL), false);
+        (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
 
     return wrapClosable(ret, br, null);
   }
@@ -127,7 +127,12 @@ public class Streams {
         }
       }
 
-      // further method overrides are trivial wrapping
+      @Override
+      public Stream<T> onClose(Runnable closeHandler) {
+        return wrapClosable(this, this, closeHandler);
+      }
+
+      //-------Below are trivial overrides of Stream interface-------
       @Override
       public boolean isParallel() {
         return str.isParallel();
@@ -136,11 +141,6 @@ public class Streams {
       @Override
       public Iterator<T> iterator() {
         return str.iterator();
-      }
-
-      @Override
-      public Stream<T> onClose(Runnable closeHandler) {
-        return wrapClosable(this, this, closeHandler);
       }
 
       @Override

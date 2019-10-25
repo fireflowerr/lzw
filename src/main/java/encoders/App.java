@@ -14,29 +14,29 @@ import java.util.stream.Stream;
 public final class App {
 
     public static void main( String[] args ) {
-      if(args.length == 0) {
-        System.err.println("err: expects file path as args");
-        System.exit(1);
-      }
-      String root = args[0];
+      //if(args.length == 0) {
+      //  System.err.println("err: expects file path as args");
+      //  System.exit(1);
+      //}
+      //String root = args[0];
 
-      if(args.length > 1) {
-        String[] tmp = args;
-        args = new String[args.length - 1];
-        System.arraycopy(tmp, 1, args, 0, tmp.length - 1);
-      }
-      for(String s : args) {
-        System.out.println(s);
-      }
-      Path p = Paths.get(root, args);
+      //if(args.length > 1) {
+      //  String[] tmp = args;
+      //  args = new String[args.length - 1];
+      //  System.arraycopy(tmp, 1, args, 0, tmp.length - 1);
+      //}
+      //for(String s : args) {
+      //  System.out.println(s);
+      //}
+      //Path p = Paths.get(root, args);
 
-      Stream<Character> fIn = null;
-      try {
-        fIn = Streams.readFileChars(p, 1024);
-      } catch (IOException e) {
-        e.printStackTrace();
-        System.exit(1);
-      }
+      //Stream<Character> fIn = null;
+      //try {
+      //  fIn = Streams.readFileChars(p, 1024);
+      //} catch (IOException e) {
+      //  e.printStackTrace();
+      //  System.exit(1);
+      //}
 
       //  System.out.println(result);
       String test = "meowmeeeoooowmeowmowmeoowmoo";
@@ -49,7 +49,8 @@ public final class App {
       BidiDict<Integer, Pair<Character, Integer>> iDict = dict.flip();
 
       Stream<Character> in = test.chars().mapToObj(x -> Character.valueOf((char)x));
-      Lzw.decode(iDict, Lzw.encode(dict, in))
+      Lzw.decode(Character.class, iDict, Lzw.encode(dict, in))
+          .flatMap(x -> x.stream())
           .forEach(System.out::print);
       System.out.println();
     }
