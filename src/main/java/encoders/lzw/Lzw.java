@@ -65,8 +65,7 @@ public class Lzw {
   }
 
   public static <A> Stream<List<A>> decode( // returns a lazily generated stream of decoded words
-      Class<A> a
-    , BidiDict<Integer, Pair<A, Integer>> dictionary
+      BidiDict<Integer, Pair<A, Integer>> dictionary
     , Stream<Integer> in) {
 
     Iterator<Integer> itr = in.iterator();

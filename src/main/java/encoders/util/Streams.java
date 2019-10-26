@@ -34,6 +34,11 @@ import java.util.stream.StreamSupport;
 
 public class Streams {
 
+  //
+  public static <T> Stream<T> streamOptional(Optional<T> opt) {
+    return opt.isPresent() ? Stream.of(opt.get()) : Stream.empty();
+  }
+
   // reduces Stream of characters to String
   public static String reudcetoStr(Stream<Character> s) {
     return s.collect(Collector.of(
