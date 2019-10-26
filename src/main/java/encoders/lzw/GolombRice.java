@@ -66,24 +66,30 @@ public class GolombRice {
       @Override
       public boolean hasNext() {
         if(nxt == null) {
-          if(backing.hasNext()){
+          if(backing.hasNext()) {
 
             int q = 0;
-            while(backing.next()) {
-              q++;
-            }
-
-            int tmp = mRef >>> 1;
-            int r = 0;
-            for(int i = 0; i < kRef; i++) {
-              if(backing.next()) {
-                r += tmp;
+            try {
+              while(backing.next()) {
+                q++;
               }
-              tmp = tmp >>> 1;
-            }
 
-            nxt = q * m + r;
-            return true;
+              int tmp = mRef >>> 1;
+              int r = 0;
+
+              int i = 0;
+              for(; i < kRef; i++) {
+                if(backing.next()) {
+                  r += tmp;
+                }
+                tmp = tmp >>> 1;
+              }
+              nxt = q * m + r;
+              return true;
+
+            } catch (NoSuchElementException e) {
+              return false;
+            }
           } else {
             return false;
           }

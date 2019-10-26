@@ -35,13 +35,13 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class Streams {
-
+  private static final int CHAR_SZ = 16;
   //
   public static <T> Stream<T> streamOptional(Optional<T> opt) {
     return opt.isPresent() ? Stream.of(opt.get()) : Stream.empty();
   }
 
-  public static Stream<Boolean> charToBin(Character c) {
+  public static Stream<Boolean> streamToBin(Character c) {
     final int charSz = 16;
     Deque<Boolean> acc = new ArrayDeque<>();
     Stream.Builder<Boolean> ret = Stream.builder();
@@ -62,6 +62,63 @@ public class Streams {
     }
 
     return ret.build();
+  }
+
+  public static Stream<Character> mapToChar(Stream<Boolean> in) {
+    Iterator <Character> spine = new Iterator<Character>() {
+      final Iterator<Boolean> backing = in.iterator();
+      Character nxt = null;
+      final int maxDigVal = 65536;
+      int i = 0;
+
+      @Override
+      public boolean hasNext() {
+        if(nxt == null) {
+
+          int pow = maxDigVal;
+          int acc = 0;
+          while(backing.hasNext() && i < CHAR_SZ) {
+            pow = pow >>> 1;
+            if(backing.next()) {
+              acc += pow;
+            }
+            i++;
+          }
+
+          if(i == 0) {
+            return false;
+          }
+
+          while(i < CHAR_SZ) { // all 1 serves as eos marker
+            pow = pow >>> 1;
+            acc += pow;
+            i++;
+          }
+
+          i = 0;
+          nxt = Character.valueOf((char)acc);
+
+          return true;
+        } else {
+          return false;
+        }
+      }
+
+      @Override
+      public Character next() {
+        if(nxt != null || hasNext()) {
+          Character ret = nxt;
+          nxt = null;
+          return ret;
+        } else {
+          throw new NoSuchElementException();
+        }
+      }
+    };
+
+    Stream<Character> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
+        (spine, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
+    return ret;
   }
 
   // reduces Stream of characters to String

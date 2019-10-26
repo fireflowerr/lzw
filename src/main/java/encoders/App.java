@@ -22,52 +22,58 @@ public final class App {
     boolean encode = argL.remove("-e");
     boolean decode = (decode = argL.remove("-d")) && decode ^ encode;
     boolean raw = argL.remove("-r");
+    boolean str = argL.remove("-s");
 
     if(argL.isEmpty()) {
       System.err.println("err: expects file path as args");
       System.exit(1);
     }
-    String root = argL.remove(0);
 
-    Path p = null;
-    if(!argL.isEmpty()) {
-      p = Paths.get(root, argL.toArray(String[]::new));
+    Stream<Character> cIn = null;
+    if(str) {
+      cIn = String.join("", argL.toArray(String[]::new))
+          .chars()
+          .mapToObj(x -> Character.valueOf((char)x));
     } else {
-      p = Paths.get(root);
-    }
 
-    Stream<Character> fIn = null;
-    try {
-      fIn = Streams.readFileChars(p, 1024);
-    } catch (IOException e) {
-      e.printStackTrace();
-      System.exit(1);
+      String root = argL.remove(0);
+      Path p = null;
+      if(!argL.isEmpty()) {
+        p = Paths.get(root, argL.toArray(String[]::new));
+      } else {
+        p = Paths.get(root);
+      }
+
+      try {
+        cIn = Streams.readFileChars(p, 1024);
+      } catch (IOException e) {
+        e.printStackTrace();
+        System.exit(1);
+      }
     }
 
     final GolombRice ge = new GolombRice(4);
     if(decode) {
       BidiDict<Integer, Pair<Character, Integer>> dict = Lzw.getUTF8Dict().flip();
 
-      Stream<Integer> decIn = ge.decode(fIn.flatMap(Streams::charToBin));
+      Stream<Integer> decIn = ge.decode(cIn.flatMap(Streams::streamToBin));
       Lzw.decode(dict, decIn)
           .forEach(System.out::print);
       System.out.println();
-      fIn.close();
+      cIn.close();
 
     } else {
       BidiDict<Pair<Character, Integer>, Integer> dict = Lzw.getUTF8Dict();
 
-      if(!raw) {
-        final ByteBuilder bb = new ByteBuilder();
-        Lzw.encode(dict, fIn)
-            .flatMap(ge::encode)
-            .flatMap(x -> Streams.streamOptional(bb.append(x))) // TODO fix
-//            .map(x -> x ? (Integer)1 : (Integer)0)
+      if(raw) {
+        Lzw.encode(dict, cIn)
+            .map(x -> x.toString() + ",")
             .forEach(System.out::print);
         System.out.println();
+
       } else {
-        Lzw.encode(dict, fIn)
-            .map(x -> x.toString() + ",")
+        Streams.mapToChar(Lzw.encode(dict, cIn)
+            .flatMap(ge::encode))
             .forEach(System.out::print);
         System.out.println();
       }
