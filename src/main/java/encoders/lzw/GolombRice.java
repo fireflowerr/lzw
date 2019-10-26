@@ -23,10 +23,11 @@ public class GolombRice {
   public void setTunable(int k) {
     this.k = k;
 
-    for(int i = 0, acc = 1; i < k; i++) {
+    int acc = 1;
+    for(int i = 0; i < k; i++) {
       acc *= 2;
-      m = acc;
     }
+    m = acc;
   }
 
   public Stream<Boolean> encode(Integer x) {

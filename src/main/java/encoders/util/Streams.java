@@ -8,7 +8,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -37,6 +39,29 @@ public class Streams {
   //
   public static <T> Stream<T> streamOptional(Optional<T> opt) {
     return opt.isPresent() ? Stream.of(opt.get()) : Stream.empty();
+  }
+
+  public static Stream<Boolean> charToBin(Character c) {
+    final int charSz = 16;
+    Deque<Boolean> acc = new ArrayDeque<>();
+    Stream.Builder<Boolean> ret = Stream.builder();
+
+    int x = c;
+    for(int i = 0; i < charSz; i++) {
+      if(x % 2 == 0) {
+        acc.push(Boolean.FALSE);
+      } else {
+        acc.push(Boolean.TRUE);
+      }
+
+      x = x >>> 1;
+    }
+
+    while(!acc.isEmpty()) {
+      ret.add(acc.pop());
+    }
+
+    return ret.build();
   }
 
   // reduces Stream of characters to String

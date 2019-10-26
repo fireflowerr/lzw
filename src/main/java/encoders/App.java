@@ -14,8 +14,6 @@ import java.util.stream.Stream;
 
 public final class App {
 
-  private static final String CW_DELIM = ",";
-
   public static void main(String[] args) {
     List<String> argL = new ArrayList<>(); // parse cli flags
     for(String arg : args) {
@@ -23,8 +21,7 @@ public final class App {
     }
     boolean encode = argL.remove("-e");
     boolean decode = (decode = argL.remove("-d")) && decode ^ encode;
-    boolean pad = argL.remove("-p");
-    System.out.println(decode);
+    boolean raw = argL.remove("-r");
 
     if(argL.isEmpty()) {
       System.err.println("err: expects file path as args");
@@ -47,24 +44,33 @@ public final class App {
       System.exit(1);
     }
 
+    final GolombRice ge = new GolombRice(4);
     if(decode) {
       BidiDict<Integer, Pair<Character, Integer>> dict = Lzw.getUTF8Dict().flip();
-      Lzw.decode(dict
-          , fIn.map(Character::getNumericValue))
-          .map(App::flattenStrL)
+
+      Stream<Integer> decIn = ge.decode(fIn.flatMap(Streams::charToBin));
+      Lzw.decode(dict, decIn)
           .forEach(System.out::print);
       System.out.println();
       fIn.close();
 
     } else {
       BidiDict<Pair<Character, Integer>, Integer> dict = Lzw.getUTF8Dict();
-      Stream<String> ret = Lzw.encode(dict, fIn)
-          .map(x -> x.toString());
-      if(pad) {
-        ret = ret.map(x -> x.concat(CW_DELIM));
+
+      if(!raw) {
+        final ByteBuilder bb = new ByteBuilder();
+        Lzw.encode(dict, fIn)
+            .flatMap(ge::encode)
+            .flatMap(x -> Streams.streamOptional(bb.append(x))) // TODO fix
+//            .map(x -> x ? (Integer)1 : (Integer)0)
+            .forEach(System.out::print);
+        System.out.println();
+      } else {
+        Lzw.encode(dict, fIn)
+            .map(x -> x.toString() + ",")
+            .forEach(System.out::print);
+        System.out.println();
       }
-      ret.forEach(System.out::print);
-      System.out.println();
     }
 
    // BidiDict<Pair<Character, Integer>, Integer> dict = Lzw.getUTF8Dict();
