@@ -45,7 +45,8 @@ public final class App {
       }
 
       try {
-        cIn = Streams.readFileChars(p, 1024);
+        cIn = Streams.readFileChars(p, 1024)
+            .filter(x -> x != '\n'); // unsatisfactory, find a better way
       } catch (IOException e) {
         e.printStackTrace();
         System.exit(1);
@@ -58,6 +59,7 @@ public final class App {
 
       Stream<Integer> decIn = ge.decode(cIn.flatMap(Streams::streamToBin));
       Lzw.decode(dict, decIn)
+          .flatMap(x -> x.stream())
           .forEach(System.out::print);
       System.out.println();
       cIn.close();

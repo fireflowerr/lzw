@@ -9,7 +9,6 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import encoders.util.ByteBuilder;
 
 public class GolombRice {
 
@@ -85,6 +84,10 @@ public class GolombRice {
                 tmp = tmp >>> 1;
               }
               nxt = q * m + r;
+//              if(nxt == '\0') {
+//                nxt = null;
+//                return false;
+//              }
               return true;
 
             } catch (NoSuchElementException e) {
