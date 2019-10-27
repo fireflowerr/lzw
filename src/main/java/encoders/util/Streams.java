@@ -1,9 +1,12 @@
 package encoders.util;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -193,6 +196,63 @@ public class Streams {
 
     return wrapClosable(ret, br, null);
   }
+
+  // Abstracts the action of contiously reading from a BufferedReader to a Stream
+//  public static Stream<Character> readFileBytes(final Path p, final int bSz) throws IOException {
+//    Iterator<Character> itr = new Iterator<Character>() {
+//        InputStream in = ByteArrayInputStream(new byte[bSz]);
+//        byte[] buf = new byte[bSz];
+//        Character nxt = null;
+//        int i = 0;
+//        int halt = 0;
+//
+//        @Override
+//        public boolean hasNext() {
+//
+//          if(nxt == null) {
+//
+//            try {
+//              halt = bb.get(buf, 0, bSz);
+//              if(halt < 0) {
+//                return false;
+//              }
+//
+//              i = 0;
+//              nxt = buf[i];
+//              return true;
+//            } catch(IOException e) {
+//              throw new RuntimeException(e);
+//            }
+//
+//          } else {
+//            return true;
+//          }
+//        }
+//
+//        @Override
+//        public Character next() {
+//          if(nxt != null || hasNext()) { // leverage short circuting here
+//            Character tmp = nxt;
+//
+//            int end = halt - 1;
+//            if(i < end) {
+//              i++;
+//              nxt = buf[i];
+//            } else {
+//              nxt = null;
+//            }
+//            return tmp;
+//          } else {
+//            throw new NoSuchElementException();
+//          }
+//        }
+//    };
+//
+//    Stream<Character> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
+//        (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
+//
+//    return wrapClosable(ret, br, null);
+//  }
 
   // nessecary to close the backing resource of Stream
   private static <T> Stream<T> wrapClosable(Stream<T> s, AutoCloseable backing, Runnable closeHandler) {
