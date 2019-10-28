@@ -2,17 +2,14 @@ package encoders.util;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Deque;
@@ -126,79 +123,6 @@ public class Streams {
     Stream<Byte> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
         (spine, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
     return ret;
-  }
-
-  // reduces Stream of characters to String
-  public static String reudcetoStr(Stream<Character> s) {
-    return s.collect(Collector.of(
-      StringBuilder::new
-    , StringBuilder::append
-    , StringBuilder::append
-    , StringBuilder::toString));
-  }
-
-  // convience method
-  public static Stream<Character> readFileChars(final Path p, final int bSz) throws IOException {
-    return readFileChars(p, bSz, StandardCharsets.UTF_8);
-  }
-
-  // Abstracts the action of contiously reading from a BufferedReader to a Stream
-  public static Stream<Character> readFileChars(final Path p, final int bSz, final Charset cs) throws IOException { // TODO FIX = USE BYTES
-    Reader reader = new InputStreamReader(Files.newInputStream(p), cs);
-    BufferedReader br = new BufferedReader(reader, bSz);
-
-    Iterator<Character> itr = new Iterator<Character>() {
-        char[] buf = new char[bSz];
-        Character nxt = null;
-        int i = 0;
-        int halt = 0;
-
-        @Override
-        public boolean hasNext() {
-
-          if(nxt == null) {
-
-            try {
-              halt = br.read(buf, 0, bSz);
-              if(halt < 0) {
-                return false;
-              }
-
-              i = 0;
-              nxt = buf[i];
-              return true;
-            } catch(IOException e) {
-              throw new RuntimeException(e);
-            }
-
-          } else {
-            return true;
-          }
-        }
-
-        @Override
-        public Character next() {
-          if(nxt != null || hasNext()) { // leverage short circuting here
-            Character tmp = nxt;
-
-            int end = halt - 1;
-            if(i < end) {
-              i++;
-              nxt = buf[i];
-            } else {
-              nxt = null;
-            }
-            return tmp;
-          } else {
-            throw new NoSuchElementException();
-          }
-        }
-    };
-
-    Stream<Character> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
-        (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
-
-    return wrapClosable(ret, br, null);
   }
 
   // helper method to get around finality restrection in anonymous classes
