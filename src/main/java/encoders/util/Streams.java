@@ -1,5 +1,6 @@
 package encoders.util;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -11,12 +12,14 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.BiConsumer;
@@ -37,20 +40,21 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static java.nio.file.StandardOpenOption.READ;
+
 public class Streams {
-  private static final int CHAR_SZ = 16;
+  private static final int BYTE_SZ = 8;
   //
   public static <T> Stream<T> streamOptional(Optional<T> opt) {
     return opt.isPresent() ? Stream.of(opt.get()) : Stream.empty();
   }
 
-  public static Stream<Boolean> streamToBin(Character c) {
-    final int charSz = 16;
+  public static Stream<Boolean> streamToBin(Byte b) {
     Deque<Boolean> acc = new ArrayDeque<>();
     Stream.Builder<Boolean> ret = Stream.builder();
 
-    int x = c;
-    for(int i = 0; i < charSz; i++) {
+    int x = b;
+    for(int i = 0; i < BYTE_SZ; i++) {
       if(x % 2 == 0) {
         acc.push(Boolean.FALSE);
       } else {
@@ -67,20 +71,20 @@ public class Streams {
     return ret.build();
   }
 
-  public static Stream<Character> mapToChar(Stream<Boolean> in) {
-    Iterator <Character> spine = new Iterator<Character>() {
+  public static Stream<Byte> mapToByte(Stream<Boolean> in) {
+    Iterator <Byte> spine = new Iterator<Byte>() {
       final Iterator<Boolean> backing = in.iterator();
-      Character nxt = null;
-      final int maxDigVal = 65536;
+      int nxt = -1;
+      final static int maxDigVal = 256;
       int i = 0;
 
       @Override
       public boolean hasNext() {
-        if(nxt == null) {
+        if(nxt == -1) {
 
           int pow = maxDigVal;
           int acc = 0;
-          while(backing.hasNext() && i < CHAR_SZ) {
+          while(backing.hasNext() && i < BYTE_SZ) {
             pow = pow >>> 1;
             if(backing.next()) {
               acc += pow;
@@ -92,14 +96,14 @@ public class Streams {
             return false;
           }
 
-          while(i < CHAR_SZ) { // all 1 serves as eos marker
+          while(i < BYTE_SZ) { // all 1 serves as eos marker
             pow = pow >>> 1;
             acc += pow;
             i++;
           }
 
           i = 0;
-          nxt = Character.valueOf((char)acc);
+          nxt = acc;
 
           return true;
         } else {
@@ -108,10 +112,10 @@ public class Streams {
       }
 
       @Override
-      public Character next() {
-        if(nxt != null || hasNext()) {
-          Character ret = nxt;
-          nxt = null;
+      public Byte next() {
+        if(nxt != -1 || hasNext()) {
+          Byte ret = (byte)nxt;
+          nxt = -1;
           return ret;
         } else {
           throw new NoSuchElementException();
@@ -119,7 +123,7 @@ public class Streams {
       }
     };
 
-    Stream<Character> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
+    Stream<Byte> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
         (spine, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
     return ret;
   }
@@ -139,7 +143,7 @@ public class Streams {
   }
 
   // Abstracts the action of contiously reading from a BufferedReader to a Stream
-  public static Stream<Character> readFileChars(final Path p, final int bSz, final Charset cs) throws IOException {
+  public static Stream<Character> readFileChars(final Path p, final int bSz, final Charset cs) throws IOException { // TODO FIX = USE BYTES
     Reader reader = new InputStreamReader(Files.newInputStream(p), cs);
     BufferedReader br = new BufferedReader(reader, bSz);
 
@@ -197,62 +201,63 @@ public class Streams {
     return wrapClosable(ret, br, null);
   }
 
+  // helper method to get around finality restrection in anonymous classes
+  private static InputStream getByteIn(Path p, OptionalInt bSz) throws IOException {
+    InputStream in = null;
+    if(bSz.isPresent()) {
+      in = new BufferedInputStream(Files.newInputStream(p, READ)
+        , bSz.getAsInt());
+    } else {
+      in = new BufferedInputStream(Files.newInputStream(p, READ));
+    }
+     return in;
+  }
+
   // Abstracts the action of contiously reading from a BufferedReader to a Stream
-//  public static Stream<Character> readFileBytes(final Path p, final int bSz) throws IOException {
-//    Iterator<Character> itr = new Iterator<Character>() {
-//        InputStream in = ByteArrayInputStream(new byte[bSz]);
-//        byte[] buf = new byte[bSz];
-//        Character nxt = null;
-//        int i = 0;
-//        int halt = 0;
-//
-//        @Override
-//        public boolean hasNext() {
-//
-//          if(nxt == null) {
-//
-//            try {
-//              halt = bb.get(buf, 0, bSz);
-//              if(halt < 0) {
-//                return false;
-//              }
-//
-//              i = 0;
-//              nxt = buf[i];
-//              return true;
-//            } catch(IOException e) {
-//              throw new RuntimeException(e);
-//            }
-//
-//          } else {
-//            return true;
-//          }
-//        }
-//
-//        @Override
-//        public Character next() {
-//          if(nxt != null || hasNext()) { // leverage short circuting here
-//            Character tmp = nxt;
-//
-//            int end = halt - 1;
-//            if(i < end) {
-//              i++;
-//              nxt = buf[i];
-//            } else {
-//              nxt = null;
-//            }
-//            return tmp;
-//          } else {
-//            throw new NoSuchElementException();
-//          }
-//        }
-//    };
-//
-//    Stream<Character> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
-//        (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
-//
-//    return wrapClosable(ret, br, null);
-//  }
+  public static Stream<Byte> readFileBytes(Path p, OptionalInt bSz) throws IOException {
+   final InputStream in = getByteIn(p, bSz);
+    Iterator<Byte> itr = new Iterator<Byte>() {
+       int nxt = -1;
+       InputStream bb = in;
+
+        @Override
+        public boolean hasNext() {
+
+          if(nxt == -1) {
+
+            try {
+              nxt = bb.read();
+              if(nxt == -1) {
+                return false;
+              }
+
+              return true;
+            } catch(IOException e) {
+              throw new RuntimeException(e);
+            }
+
+          } else {
+            return true;
+          }
+        }
+
+        @Override
+        public Byte next() {
+          if(nxt != -1 || hasNext()) { // leverage short circuting here
+            Byte tmp = (byte)nxt;
+            nxt = -1;
+            return tmp;
+          } else {
+            throw new NoSuchElementException();
+          }
+        }
+    };
+
+    Stream<Byte> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
+        (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
+
+    return wrapClosable(ret, in, null);
+  }
 
   // nessecary to close the backing resource of Stream
   private static <T> Stream<T> wrapClosable(Stream<T> s, AutoCloseable backing, Runnable closeHandler) {

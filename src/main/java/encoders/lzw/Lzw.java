@@ -128,12 +128,12 @@ public class Lzw {
     return LZW_BOT;
   }
 
-  public static BidiDict<Pair<Character, Integer>, Integer> getUTF8Dict() {
-    final int utfMax = 256;
-    BidiDict<Pair<Character, Integer>, Integer> ret = new Dict<>();
+  public static BidiDict<Pair<Byte, Integer>, Integer> getDict8() {
+    int byteSz = 256;
 
-    for(int i = 0; i < utfMax; i++) {
-      Pair<Character, Integer> key = new Pair<>((char)i, LZW_BOT);
+    BidiDict<Pair<Byte, Integer>, Integer> ret = new Dict<>();
+    for(int i = 0; i < byteSz; i++) {
+      Pair<Byte, Integer> key = new Pair<>((byte)i, LZW_BOT);
       ret.add(key, i);
     }
 
