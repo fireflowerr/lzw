@@ -2,6 +2,7 @@ package encoders;
 import encoders.lzw.*;
 import encoders.lzw.dict.*;
 import encoders.util.*;
+import encoders.util.unchecked.URunnable;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -69,12 +70,8 @@ public final class App {
       }
     }
 
-    try {
-      cIn.close();
-      cOut.close();
-    } catch(Exception e) {
-      e.printStackTrace();
-    }
+    cIn.close();
+    URunnable.unchecked(cOut::close).run();
   }
 
   private Stream<Byte> initCin() {
@@ -123,11 +120,8 @@ public final class App {
     Path p = pathFromList(wArgs);
     try {
       cOut = new BufferedOutputStream(Files.newOutputStream(p, CREATE, WRITE, TRUNCATE_EXISTING));
-
-
     } catch (IOException e) {
-      e.printStackTrace();
-      System.exit(1);
+      throw new UncheckedIOException(e);
     }
 
     return cOut;
