@@ -26,6 +26,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;;
 public final class App {
   private CliParser cli;
   private int inSz;
+  private int byteC;
   private int geParam;
   private GolombRice ge;
   private Stream<Byte> cIn;
@@ -34,8 +35,8 @@ public final class App {
 
   public App(String[] args) {
     cli = new CliParser(args);
-    cIn = initCin();
-    cOut = initCout();
+    initCin();
+    initCout();
 
     if(ge == null) {
       if(cli.tunable()) {
@@ -73,14 +74,13 @@ public final class App {
     URunnable.unchecked(cOut::close).run();
   }
 
-  private Stream<Byte> initCin() {
+  private void initCin() {
     List<String> fArgs = cli.getFileArgs();
     if(fArgs.isEmpty()) {
       System.err.println("err: expects input or file path");
       System.exit(1);
     }
 
-    Stream<Byte> cIn = null;
     if(cli.file()) {
 
       Path p = pathFromList(fArgs);
@@ -113,15 +113,13 @@ public final class App {
         acc.accept(tmp[i]);
       }
       cIn = acc.build();
-
     }
-    return cIn;
   }
 
-  private OutputStream initCout() {
+  private void initCout() {
     if(!cli.write()) {
       cOut = System.out;
-      return cOut;
+      return;
     }
 
     List<String> wArgs = cli.getWriteArgs();
@@ -130,15 +128,12 @@ public final class App {
       System.exit(1);
     }
 
-    OutputStream cOut = null;
     Path p = pathFromList(wArgs);
     try {
       cOut = new BufferedOutputStream(Files.newOutputStream(p, CREATE, WRITE, TRUNCATE_EXISTING));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-
-    return cOut;
   }
 
   private <A> void decode(
