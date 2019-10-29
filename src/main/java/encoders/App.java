@@ -37,6 +37,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;;
 
 public final class App {
   private CliParser cli;
+  private int geParam;
   private GolombRice ge;
   private Stream<Byte> cIn;
   private OutputStream cOut;
@@ -44,9 +45,12 @@ public final class App {
 
   public App(String[] args, int golombRiceK) {
     cli = new CliParser(args);
-    ge = new GolombRice(golombRiceK);
     cIn = initCin();
     cOut = initCout();
+
+    if(ge == null) {
+      ge = new GolombRice(geParam);
+    }
   }
 
   public void run() {
@@ -91,6 +95,13 @@ public final class App {
       try {
         InputStream in = new BufferedInputStream(
             Files.newInputStream(p, READ));
+
+        if(cli.decode()) {
+          geParam = in.read();
+          ge = new GolombRice(geParam);
+        } else {
+          geParam = (int)Math.ceil(Math.log(Files.size(p)));
+        }
 
         cIn = Streams.readFileBytes(in);
       } catch (IOException e) {
@@ -186,6 +197,7 @@ public final class App {
       writeOut(lineSepr);
 
     } else {
+      writeOut((byte)geParam);
       Streams.mapToByte(Lzw.encode(dict, cIn)
           .flatMap(ge::encode))
           .forEach(this::writeOut);
