@@ -128,21 +128,8 @@ public class Streams {
     return ret;
   }
 
-  // helper method to get around finality restrection in anonymous classes
-  private static InputStream getByteIn(Path p, OptionalInt bSz) throws IOException {
-    InputStream in = null;
-    if(bSz.isPresent()) {
-      in = new BufferedInputStream(Files.newInputStream(p, READ)
-        , bSz.getAsInt());
-    } else {
-      in = new BufferedInputStream(Files.newInputStream(p, READ));
-    }
-     return in;
-  }
-
   // Abstracts the action of contiously reading from a BufferedReader to a Stream
-  public static Stream<Byte> readFileBytes(Path p, OptionalInt bSz) throws IOException {
-   final InputStream in = getByteIn(p, bSz);
+  public static Stream<Byte> readFileBytes(InputStream in) throws IOException {
     Iterator<Byte> itr = new Iterator<Byte>() {
        int nxt = -1;
        InputStream bb = in;

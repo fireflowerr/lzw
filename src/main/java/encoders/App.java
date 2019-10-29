@@ -4,9 +4,11 @@ import encoders.lzw.dict.*;
 import encoders.util.*;
 import encoders.util.unchecked.URunnable;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -27,6 +29,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;;
@@ -86,7 +89,10 @@ public final class App {
 
       Path p = pathFromList(fArgs);
       try {
-        cIn = Streams.readFileBytes(p, OptionalInt.empty());
+        InputStream in = new BufferedInputStream(
+            Files.newInputStream(p, READ));
+
+        cIn = Streams.readFileBytes(in);
       } catch (IOException e) {
         e.printStackTrace();
         System.exit(1);
