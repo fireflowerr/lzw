@@ -19,6 +19,7 @@ public class CliParser {
     longFlagNames.put("encode", 'e');
     longFlagNames.put("write", 'w');
     longFlagNames.put("verify", 'v');
+    longFlagNames.put("binary", 'b');
   }
 
   public CliParser(String[] args) {
@@ -27,6 +28,7 @@ public class CliParser {
     shortFlagNames.put('d', false);
     shortFlagNames.put('w', false);
     shortFlagNames.put('v', false);
+    shortFlagNames.put('b', false);
 
     boolean wSeen = false;
     int l = args.length;
@@ -73,6 +75,10 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
 
   public boolean verify() {
     return shortFlagNames.get('v');
+  }
+
+  public boolean binary() {
+    return shortFlagNames.get('b');
   }
 
   public List<String> getWriteArgs() {

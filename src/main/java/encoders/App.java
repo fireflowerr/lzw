@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -45,10 +46,27 @@ public final class App {
   }
 
   public void run() {
-    if(cli.decode()) {
-      decode();
+    if(cli.binary()) {
+      Function<Stream<Boolean>, Stream<Byte>> normalizer = Streams::mapToByte;
+
+      if(cli.decode()) {
+        decode(Lzw.getDict2().flip(), normalizer);
+      } else {
+        encode(Lzw.getDict2()
+          , cIn.flatMap(Streams::streamToBin)
+          , normalizer);
+      }
+
     } else {
-      encode();
+      Function<Stream<Byte>, Stream<Byte>> normalizer = x -> x;
+
+      if(cli.decode()) {
+        decode(Lzw.getDict8().flip(), normalizer);
+      } else {
+        encode(Lzw.getDict8()
+          , cIn
+          , normalizer);
+      }
     }
 
     try {
@@ -115,22 +133,17 @@ public final class App {
     return cOut;
   }
 
-  private void decode() {
-    BidiDict<Integer, Pair<Byte, Integer>> dict = Lzw.getDict8().flip();
-    Lzw.decode(dict
+  private <A> void decode(
+      BidiDict<Integer, Pair<A, Integer>> dict
+    , Function<Stream<A>, Stream<Byte>> normalizer) {
+
+    Stream<A> tmp = Lzw.decode(dict
             , ge.decode(cIn.flatMap(Streams::streamToBin)))
-          .flatMap(x -> x.stream())
-          .forEach(this::writeOut);
+          .flatMap(x -> x.stream());
+
+    normalizer.apply(tmp)
+        .forEach(this::writeOut);
     writeOut(lineSepr);
-
-
-    //  ge.decode(cIn.flatMap(Streams::streamToBin))
-    //      .map(x -> x.toString() + ",")
-    //      .forEach(cOut::print);
-    //  cOut.println();
-
-    // cIn.forEach(cOut::print);
-    // cOut.println();
   }
 
   private void writeOut(Byte b) {
@@ -149,15 +162,19 @@ public final class App {
     }
   }
 
-  private void encode() {
-    BidiDict<Pair<Byte, Integer>, Integer> dict = Lzw.getDict8();
+  private <A> void encode(
+      BidiDict<Pair<A, Integer>, Integer> dict
+    , Stream<A> cIn
+    , Function<Stream<A>, Stream<Byte>> normalizer) {
 
     if(cli.verify()) {
-      Lzw.decode(dict.flip() // proof of correctness
+      Stream<A> tmp = Lzw.decode(dict.flip() // proof of correctness
           , ge.decode(Streams.mapToByte(Lzw.encode(dict, cIn)
               .flatMap(ge::encode))
             .flatMap(Streams::streamToBin)))
-        .flatMap(x -> x.stream())
+        .flatMap(x -> x.stream());
+
+      normalizer.apply(tmp)
         .forEach(this::writeOut);
       writeOut(lineSepr);
 

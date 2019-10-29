@@ -137,4 +137,13 @@ public class Lzw {
     return ret;
   }
 
+  public static BidiDict<Pair<Boolean, Integer>, Integer> getDict2() {
+    BidiDict<Pair<Boolean, Integer>, Integer> ret = new Dict<>();
+    Pair<Boolean, Integer> f = new Pair<>(false, LZW_BOT);
+    Pair<Boolean, Integer> t = new Pair<>(true, LZW_BOT);
+    ret.add(f, 0);
+    ret.add(t, 1);
+    return ret;
+  }
+
 }
