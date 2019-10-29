@@ -12,6 +12,7 @@ public class CliParser {
   private Map<Character, Boolean> shortFlagNames = new HashMap<>();
   private List<String> fArgs = new ArrayList<>();
   private List<String> wArgs = new ArrayList<>();
+  private String kArg;
   static {
     longFlagNames.put("file", 'f');
     longFlagNames.put("raw", 'r');
@@ -20,6 +21,7 @@ public class CliParser {
     longFlagNames.put("write", 'w');
     longFlagNames.put("verify", 'v');
     longFlagNames.put("binary", 'b');
+    longFlagNames.put("tunable", 'k');
   }
 
   public CliParser(String[] args) {
@@ -29,8 +31,10 @@ public class CliParser {
     shortFlagNames.put('w', false);
     shortFlagNames.put('v', false);
     shortFlagNames.put('b', false);
+    shortFlagNames.put('k', false);
 
-    boolean wSeen = false;
+    int seen = 0;
+    int prevSeen = 0;
     int l = args.length;
     for(int i = 0; i < l; i++) {
       String s = args[i] ;
@@ -43,15 +47,28 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
         }
         shortFlagNames.put(key, true);
 
-        if(key == 'w') {
-          wSeen = true;
+        switch(key) {
+          case 'w':
+            seen = 1;
+            break;
+          case 'k':
+            prevSeen = seen;
+            seen = 2;
+            break;
         }
 
       } else {
-        if(wSeen) {
-          wArgs.add(s);
-        } else {
-          fArgs.add(s);
+        switch(seen) {
+          case 0:
+            fArgs.add(s);
+            break;
+          case 1:
+            wArgs.add(s);
+            break;
+          case 2:
+            kArg = s;
+            seen = prevSeen;
+            break;
         }
       }
     }
@@ -77,6 +94,10 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
     return shortFlagNames.get('v');
   }
 
+  public boolean tunable() {
+    return shortFlagNames.get('k');
+  }
+
   public boolean binary() {
     return shortFlagNames.get('b');
   }
@@ -87,6 +108,10 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
 
   public List<String> getFileArgs() {
     return fArgs;
+  }
+
+  public String getTunableArg() {
+    return kArg;
   }
 
 }

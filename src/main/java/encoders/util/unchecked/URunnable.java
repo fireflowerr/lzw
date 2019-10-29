@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 
 @FunctionalInterface
-public interface URunnable <E extends Exception> {
+public interface URunnable <E extends Exception> { // nessecary to wrap InputStream in Stream<Byte> also convienent
   void run () throws E;
 
   static <E extends Exception> Runnable unchecked(URunnable<E> u) {

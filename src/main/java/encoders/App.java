@@ -6,26 +6,14 @@ import encoders.util.unchecked.URunnable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.OptionalInt;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -37,18 +25,22 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;;
 
 public final class App {
   private CliParser cli;
+  private int inSz;
   private int geParam;
   private GolombRice ge;
   private Stream<Byte> cIn;
   private OutputStream cOut;
   private static byte[] lineSepr = System.getProperty("line.separator").getBytes();
 
-  public App(String[] args, int golombRiceK) {
+  public App(String[] args) {
     cli = new CliParser(args);
     cIn = initCin();
     cOut = initCout();
 
     if(ge == null) {
+      if(cli.tunable()) {
+        geParam = Integer.valueOf(cli.getTunableArg());
+      }
       ge = new GolombRice(geParam);
     }
   }
@@ -92,6 +84,11 @@ public final class App {
     if(cli.file()) {
 
       Path p = pathFromList(fArgs);
+      if(!Files.isRegularFile(p)) {
+        System.err.println("err: " + p + " is not a file or cannot be read");
+        System.exit(1);
+      }
+
       try {
         InputStream in = new BufferedInputStream(
             Files.newInputStream(p, READ));
@@ -218,7 +215,7 @@ public final class App {
   }
 
   public static void main(String[] args) {
-    App app = new App(args, 4);
+    App app = new App(args);
     app.run();
   }
 }

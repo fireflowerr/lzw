@@ -2,6 +2,7 @@ package encoders.lzw;
 
 import encoders.lzw.dict.*;
 import encoders.util.*;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;

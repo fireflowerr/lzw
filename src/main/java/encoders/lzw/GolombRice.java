@@ -68,7 +68,7 @@ public class GolombRice {
           if(backing.hasNext()) {
 
             int q = 0;
-            try {
+            try { // GolombRice alg
               while(backing.next()) {
                 q++;
               }
@@ -84,10 +84,6 @@ public class GolombRice {
                 tmp = tmp >>> 1;
               }
               nxt = q * m + r;
-//              if(nxt == '\0') {
-//                nxt = null;
-//                return false;
-//              }
               return true;
 
             } catch (NoSuchElementException e) {

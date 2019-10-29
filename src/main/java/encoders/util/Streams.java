@@ -1,53 +1,23 @@
 package encoders.util;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
+import encoders.util.unchecked.URunnable;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.io.UncheckedIOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.ToDoubleFunction;
-import java.util.function.ToIntFunction;
-import java.util.function.ToLongFunction;
-import java.util.stream.Collector;
-import java.util.stream.DoubleStream;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import encoders.util.unchecked.URunnable;
 
-import static java.nio.file.StandardOpenOption.READ;
 
 public class Streams {
   private static final int BYTE_SZ = 8;
-  //
-  public static <T> Stream<T> streamOptional(Optional<T> opt) {
-    return opt.isPresent() ? Stream.of(opt.get()) : Stream.empty();
-  }
 
   public static Stream<Boolean> streamToBin(Byte b) {
     Deque<Boolean> acc = new ArrayDeque<>();
@@ -172,8 +142,5 @@ public class Streams {
 
     return ret.onClose(URunnable.unchecked(in::close));
   }
-
-
-
 
 }
