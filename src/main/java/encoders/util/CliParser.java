@@ -15,13 +15,14 @@ public class CliParser {
   private String kArg;
   static {
     longFlagNames.put("file", 'f');
-    longFlagNames.put("raw", 'r');
-    longFlagNames.put("decode", 'd');
-    longFlagNames.put("encode", 'e');
     longFlagNames.put("write", 'w');
-    longFlagNames.put("verify", 'v');
+    longFlagNames.put("decode", 'd');
     longFlagNames.put("binary", 'b');
     longFlagNames.put("tunable", 'k');
+    longFlagNames.put("raw", 'r');
+    longFlagNames.put("identity", 'i');
+    longFlagNames.put("verbose", 'v');
+    longFlagNames.put("silent" , 's');
   }
 
   public CliParser(String[] args) {
@@ -29,9 +30,11 @@ public class CliParser {
     shortFlagNames.put('r', false);
     shortFlagNames.put('d', false);
     shortFlagNames.put('w', false);
-    shortFlagNames.put('v', false);
+    shortFlagNames.put('i', false);
     shortFlagNames.put('b', false);
     shortFlagNames.put('k', false);
+    shortFlagNames.put('v', false);
+    shortFlagNames.put('s', false);
 
     int seen = 0;
     int prevSeen = 0;
@@ -90,8 +93,8 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
     return shortFlagNames.get('w');
   }
 
-  public boolean verify() {
-    return shortFlagNames.get('v');
+  public boolean identity() {
+    return shortFlagNames.get('i');
   }
 
   public boolean tunable() {
@@ -100,6 +103,14 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
 
   public boolean binary() {
     return shortFlagNames.get('b');
+  }
+
+  public boolean verbose() {
+    return shortFlagNames.get('v');
+  }
+
+  public boolean silent() {
+    return shortFlagNames.get('s');
   }
 
   public List<String> getWriteArgs() {

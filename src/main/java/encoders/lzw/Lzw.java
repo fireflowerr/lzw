@@ -22,7 +22,8 @@ public class Lzw {
 
   public static <A> Stream<Integer> encode( // returns a lazily generated stream of the compressed sequence
       BidiDict<Pair<A, Integer>, Integer> dictionary
-    , Stream<A> in) {
+    , Stream<A> in
+    , Optional<Runnable> counter) {
 
     Iterator<Integer> spine = new Iterator<Integer>() {
         BidiDict<Pair<A, Integer>, Integer> dict = dictionary;
@@ -46,6 +47,7 @@ public class Lzw {
             index = lup.get();
             if((alive = itr.hasNext())) {
               a = itr.next();
+              counter.ifPresent(x -> x.run());
               lup = dict.lookup(new Pair<>(a, index));
             } else {
               lup = Optional.empty();
