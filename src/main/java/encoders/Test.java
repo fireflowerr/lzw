@@ -12,6 +12,8 @@ import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,6 +28,7 @@ import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 public class Test {
+  private static final Logger LOGGER = Logger.getLogger(Test.class.getName());
   private static String encodeDir = "encode";
   private static String decodeDir = "decode";
   private static String hashExt = ".md5";
@@ -33,7 +36,7 @@ public class Test {
 
   public Test(String[] args) {
     if(args.length == 0) {
-      System.err.println("err: expects test directory path");
+      LOGGER.log(Level.SEVERE, "expects test directory path");
       System.exit(1);
     }
 
@@ -45,7 +48,9 @@ public class Test {
     try {
       initDirectory();
     } catch(IOException e) {
-      throw new UncheckedIOException(e);
+      LOGGER.log(Level.SEVERE
+        , "unable to initialize target directory for testing", e);
+      System.exit(1);
     }
   }
 
@@ -96,16 +101,23 @@ public class Test {
     };
   }
 
-  private void encode() throws IOException {
+  private void runTest() {
     Runtime runtime = Runtime.getRuntime();
 
-    Iterator<Path> itr = Files.list(target)
-      .filter(Files::isRegularFile)
-      .filter(x -> !isMD5(hashExt, x))
-      .iterator();
+    Iterator<Path> itr = null;
+    try {
+      itr = Files.list(target)
+        .filter(Files::isRegularFile)
+        .filter(x -> !isMD5(hashExt, x))
+        .iterator();
+    } catch(IOException e) {
+      LOGGER.log(Level.SEVERE, "cannot stat target dir -> " + e.getMessage(), e);
+      System.exit(1);
+    }
 
-    System.out.printf("%-10s  %11s  %11s      %-6s%n", "FILE", "IN SIZE", "OUT SIZE", "CR");
+    System.out.printf("%-12s%-8s%-14s%-14s%-4s%n", "FILE", "STATUS", "IN SIZE", "OUT SIZE", "CR");
     Path p = null;
+    boolean pass = true;
     while(itr.hasNext()) {
       p = itr.next();
 
@@ -114,32 +126,58 @@ public class Test {
       if(!Files.exists(md5)) {
         inHash = writeMD5(p);
       } else {
-        inHash = new String(Files.readAllBytes(md5));
+        try {
+          inHash = new String(Files.readAllBytes(md5));
+        } catch(IOException e) {
+          LOGGER.log(Level.SEVERE, "failed to get md5 -> " + e.getMessage(), e);
+          pass = false;
+        }
       }
 
       String[] lzwEnArgs =  lzwEncodeArgs(p);
-      URunnable.unchecked(() -> runtime.exec(lzwEnArgs).waitFor()).run();
+      try {
+        runtime.exec(lzwEnArgs).waitFor();
+      } catch(Exception e) {
+        LOGGER.log(Level.SEVERE
+            , "external encoding invocation failed to execute -> " + e.getMessage()
+            , e);
+        pass = false;
+      }
 
       // decode
       int tmp = lzwEnArgs.length - 1;
       Path enPath = Paths.get(lzwEnArgs[tmp]);
       String[] lzwDeArgs = lzwDecodeArgs(enPath);
-      URunnable.unchecked(() -> runtime.exec(lzwDeArgs).waitFor()).run();
+      try {
+        runtime.exec(lzwDeArgs).waitFor();
+      } catch(Exception e) {
+        LOGGER.log(Level.SEVERE
+            , "external decoding invocation failed to execute -> " + e.getMessage()
+            , e);
+        pass = false;
+      }
 
       tmp = lzwDeArgs.length - 1;
       String outHash = writeMD5(Paths.get(lzwDeArgs[tmp]));
-      boolean pass = inHash.equals(outHash);
-      String status =  pass ? "pass" : "fail";
+      pass = pass && inHash.equals(outHash);
+      String status = pass ? "PASS" : "FAIL";
 
       if(pass) {
-        long inSz = Files.size(p);
-        long outSz = Files.size(enPath);
+        long inSz = 0;
+        long outSz = 0;
+        try {
+          inSz = Files.size(p);
+          outSz = Files.size(enPath);
+        } catch(IOException e) {
+          LOGGER.log(Level.SEVERE, "cannot fetch file size -> " + e.getMessage(), e);
+        }
         Pair<Float, String> fInSz = formatSz(inSz);
         Pair<Float, String> fOutSz = formatSz(outSz);
         float ratio = inSz / (float)outSz;
 
-        System.out.printf("%-10s  %8.2f %-3s  %8.2f %-3s    %-6.2f%n"
+        System.out.printf("%-10s  %-4s  %8.2f %-3s  %8.2f %-3s    %-6.2f%n"
           , p.getFileName().toString()
+          , status
           , fInSz.fst
           , fInSz.snd
           , fOutSz.fst
@@ -152,7 +190,8 @@ public class Test {
 
   private static String writeMD5(Path p) {
     Path hashP = appendToFileName(hashExt, p);
-    MessageDigest md5 = USupplier.unchecked(() -> MessageDigest.getInstance("MD5")).get(); try(DigestInputStream dig = new DigestInputStream(new BufferedInputStream(
+    MessageDigest md5 = USupplier.unchecked(() -> MessageDigest.getInstance("MD5")).get();
+    try(DigestInputStream dig = new DigestInputStream(new BufferedInputStream(
           Files.newInputStream(p, CREATE, TRUNCATE_EXISTING, READ))
         , md5)) {
 
@@ -167,8 +206,9 @@ public class Test {
       return new String(hash);
 
     } catch(IOException e) {
-      throw new UncheckedIOException(e);
+      LOGGER.log(Level.SEVERE, "writeMD5 execution failure -> " + e.getMessage(), e);
     }
+    throw new RuntimeException(); // unreachable
   }
 
   private static boolean isMD5(String ext, Path p) {
@@ -213,12 +253,8 @@ public class Test {
     return new Pair<>(sz / prev, unit);
   }
 
-  public void run() {
-    URunnable.unchecked(this::encode).run();
-  }
-
   public static void main(String[] args) {
     Test app = new Test(args);
-    app.run();
+    app.runTest();
   }
 }

@@ -1,11 +1,26 @@
 package encoders.util;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.StreamHandler;
 
 public class CliParser {
+  private static final Logger LOGGER = Logger.getLogger(CliParser.class.getName());
+  private static ByteArrayOutputStream logCache = new ByteArrayOutputStream();
+  private static Handler dbgInfo = new StreamHandler(logCache, new SimpleFormatter());
+  static {
+    LOGGER.setLevel(Level.ALL);
+    dbgInfo.setLevel(Level.ALL);
+    dbgInfo.setFilter(x -> x.getLevel().intValue() <  Level.INFO.intValue());
+    LOGGER.addHandler(dbgInfo);
+  }
 
   private char flagSym = '-';
   private static Map<String, Character> longFlagNames = new HashMap<>();
@@ -23,6 +38,7 @@ public class CliParser {
     longFlagNames.put("identity", 'i');
     longFlagNames.put("verbose", 'v');
     longFlagNames.put("silent" , 's');
+    longFlagNames.put("log" , 'l');
   }
 
   public CliParser(String[] args) {
@@ -35,6 +51,7 @@ public class CliParser {
     shortFlagNames.put('k', false);
     shortFlagNames.put('v', false);
     shortFlagNames.put('s', false);
+    shortFlagNames.put('l', false);
 
     int seen = 0;
     int prevSeen = 0;
@@ -48,7 +65,10 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
         } else {
           key = s.charAt(1);
         }
+
         shortFlagNames.put(key, true);
+        LOGGER.log(Level.CONFIG, "flag set ON -> " + key);
+
 
         switch(key) {
           case 'w':
@@ -74,6 +94,11 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
             break;
         }
       }
+    }
+    dbgInfo.flush();
+
+    if(logging()) {
+      System.err.print(logCache.toString());
     }
   }
 
@@ -111,6 +136,10 @@ char key = '\0'; if(s.charAt(1) == flagSym) {
 
   public boolean silent() {
     return shortFlagNames.get('s');
+  }
+
+  public boolean logging() {
+    return shortFlagNames.get('l');
   }
 
   public List<String> getWriteArgs() {
