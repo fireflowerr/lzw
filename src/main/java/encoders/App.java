@@ -238,7 +238,7 @@ public final class App {
       Stream<Byte> tmp = Streams.mapToByte(Lzw.encode(dict, cIn, counter)
           .flatMap(ge::encode));
 
-      if(cli.verbose()) {
+      if(cli.verbose() && (cli.write() || cli.silent())) {
         statusMod = inSz / 20;
         tmp.forEach(this::writeStatus);
       } else {
@@ -284,12 +284,12 @@ public final class App {
     }
 
     if(byteC == inSz) {
-      float cr = outSz / (float)inSz * 100;
+      float cr = inSz / (float)outSz;
 
       Pair<Float, String> n = formatSz(outSz);
       Pair<Float, String> d = formatSz(inSz);
 
-      System.out.printf(">  CR: (%.2f %s/%.2f %s) -> %.3f%c%n", n.fst, n.snd, d.fst, d.snd, cr, '%');
+      System.out.printf(">  CR: (%.2f %s/%.2f %s) -> %.3f%n", d.fst, d.snd, n.fst, n.snd, cr);
       byteC++;
     }
   }

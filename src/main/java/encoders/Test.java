@@ -1,29 +1,31 @@
 package encoders;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.DigestInputStream;
-import java.security.DigestOutputStream;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import encoders.util.Pair;
+import encoders.util.Tuple3;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 import static java.nio.file.StandardOpenOption.READ;
 
 public class Test {
@@ -32,22 +34,44 @@ public class Test {
   private static String encodeDir = "encode";
   private static String decodeDir = "decode";
   private static String hashExt = ".md5";
-  Path target;
+  private static int nameMaxLengh = 15;
+
+  private boolean stacktrace;
+  private Path target;
 
   public Test(String[] args) {
-    if(args.length == 0) {
+    List<String> lArgs = Arrays.stream(args).collect(Collectors.toList());
+    stacktrace = lArgs.remove("--stacktrace");
+    if(stacktrace) {
+      LOGGER.setLevel(Level.ALL);
+    } else {
+      LOGGER.setLevel(Level.OFF);
+    }
+
+    if(lArgs.isEmpty()) {
       LOGGER.log(Level.SEVERE, "expects test directory path");
       System.exit(1);
     }
 
-    String root = args[0];
-    String[] tmp = new String[args.length - 1];
-    System.arraycopy(args, 1, tmp, 0, args.length - 1);
-    target = Paths.get(root, tmp);
+    String root = lArgs.remove(0);
+    target = Paths.get(root, lArgs.toArray(String[]::new));
     initDirectory();
   }
 
   private void initDirectory() {
+    try {
+      for(Iterator<Path> delItr = Files.newDirectoryStream(target, Test::isMD5)
+          .iterator(); delItr.hasNext();) {
+
+        Path del = delItr.next();
+        Files.delete(del);
+      }
+    } catch(IOException e) {
+      LOGGER.log(Level.SEVERE
+        , "error initializing target directory for testing -> " + e.getMessage()
+        , e);
+      System.exit(1);
+    }
     Stream.of(encodeDir, decodeDir)
       .map(target::resolve)
       .forEach(this::wipeCreateDir);
@@ -103,15 +127,15 @@ public class Test {
     };
   }
 
-  private void runTest(List<Pair<
-      Function<Path, String[]>
+  private void runTest(List<Tuple3<
+      String
+    , Function<Path, String[]>
     , Function<Path, String[]>>> executors) {
 
     Iterator<Path> itr = null;
     try {
       itr = Files.list(target)
         .filter(Files::isRegularFile)
-        .filter(x -> !isMD5(hashExt, x))
         .iterator();
     } catch(IOException e) {
       LOGGER.log(Level.SEVERE
@@ -120,17 +144,22 @@ public class Test {
       System.exit(1);
     }
 
-    System.out.printf("%-12s%-8s%-14s%-14s%-4s%n", "FILE", "STATUS", "IN SIZE", "OUT SIZE", "CR");
-    String formatter = "%-15s  %-4s  %8.2f %-3s  %8.2f %-3s    %-6.2f    |    ";
+    String fileField = "%-" + nameMaxLengh + "s  ";
+    String formatter = fileField + "%-8s%-8s%-8.2f %-3s  %8.2fs %-3s  %6.2f%n";
+    System.out.printf(fileField + "%-8s%-8s%-16s%-15s%s%n", "FILE", "RUNNER", "STATUS", "IN SIZE", "OUT SIZE", "CR");
+    Tuple3<String, Function<Path, String[]>, Function<Path, String[]>> head = executors.remove(0);
     while(itr.hasNext()) {
       Path p = itr.next();
-      executors.forEach(x -> runExternalUnit(formatter, p, x.fst, x.snd));
-      System.out.println();
+      String fName = formatName(p.getFileName().toString());
+      runExternalUnit(formatter, p, fName, head.fst, head.snd, head.thd);
+      executors.forEach(x -> runExternalUnit(formatter, p, "", x.fst, x.snd, x.thd));
     }
   }
 
-  private static void runExternalUnit(String formatter
+  private void runExternalUnit(String formatter
     , Path p
+    , String fName
+    , String runnerName
     , Function<Path, String[]> getEnArgs
     , Function<Path, String[]> getDeArgs) {
 
@@ -150,9 +179,9 @@ public class Test {
       }
     }
 
-    String[] lzwEnArgs = getEnArgs.apply(p);
+    String[] enArgs = getEnArgs.apply(p);
     try {
-      RUNTIME.exec(lzwEnArgs).waitFor();
+      RUNTIME.exec(enArgs).waitFor();
     } catch(Exception e) {
       LOGGER.log(Level.SEVERE
           , "external encoding invocation failed to execute -> " + e.getMessage()
@@ -161,11 +190,11 @@ public class Test {
     }
 
     // decode
-    int tmp = lzwEnArgs.length - 1;
-    Path enPath = Paths.get(lzwEnArgs[tmp]);
-    String[] lzwDeArgs = getDeArgs.apply(enPath);
+    int tmp = enArgs.length - 1;
+    Path enPath = Paths.get(enArgs[tmp]);
+    String[] deArgs = getDeArgs.apply(enPath);
     try {
-      RUNTIME.exec(lzwDeArgs).waitFor();
+      RUNTIME.exec(deArgs).waitFor();
     } catch(Exception e) {
       LOGGER.log(Level.SEVERE
           , "external decoding invocation failed to execute -> " + e.getMessage()
@@ -173,8 +202,8 @@ public class Test {
       pass = false;
     }
 
-    tmp = lzwDeArgs.length - 1;
-    String outHash = writeMD5(Paths.get(lzwDeArgs[tmp]));
+    tmp = deArgs.length - 1;
+    String outHash = writeMD5(Paths.get(deArgs[tmp]));
     pass = pass && inHash.equals(outHash);
     String status = pass ? "PASS" : "FAIL";
 
@@ -192,19 +221,20 @@ public class Test {
       float ratio = inSz / (float)outSz;
 
       System.out.printf(formatter
-        , p.getFileName()
+        , fName
+        , runnerName
         , status
         , fInSz.fst
         , fInSz.snd
         , fOutSz.fst
         , fOutSz.snd , ratio);
     } else {
-      System.out.printf("%-15s  %-4s", p.getFileName(), status);
+      String fileField = "%-" + nameMaxLengh + "s  ";
+      System.out.printf(fileField + "%-8s%-6s%n", fName, runnerName, status);
     }
-
   }
 
-  private static String writeMD5(Path p) {
+  private String writeMD5(Path p) {
     Path hashP = appendToFileName(hashExt, p);
     MessageDigest md5 = null;
     try {
@@ -232,17 +262,17 @@ public class Test {
     } catch(IOException e) {
       LOGGER.log(Level.SEVERE, "writeMD5 execution failure -> " + e.getMessage(), e);
     }
-    throw new RuntimeException(); // unreachable
+    return "";
   }
 
-  private static boolean isMD5(String ext, Path p) {
+  private static boolean isMD5(Path p) {
     String name = p.getFileName().toString();
     int cut = name.lastIndexOf('.');
 
     if(cut < 0) {
       return false;
     } else {
-      return ext.equals(name.substring(cut));
+      return hashExt.equals(name.substring(cut));
     }
   }
 
@@ -277,10 +307,21 @@ public class Test {
     return new Pair<>(sz / prev, unit);
   }
 
+  private static String formatName(String name) {
+    if(name.length() > nameMaxLengh) {
+      name = name.substring(0, nameMaxLengh - 3);
+      return name + "...";
+    } else {
+      return name;
+    }
+  }
+
   public static void main(String[] args) {
     Test app = new Test(args);
-    List<Pair<Function<Path, String[]>, Function<Path, String[]>>> l = new ArrayList<>();
-    l.add(new Pair<>(app::lzwEncodeArgs, app::lzwDecodeArgs));
+    List<Tuple3<String, Function<Path, String[]>, Function<Path, String[]>>> l = new ArrayList<>();
+    l.add(new Tuple3<>("lzw", app::lzwEncodeArgs, app::lzwDecodeArgs));
+//    l.add(new Tuple3<>("test", x -> new String[] {"meow"}, x -> new String[] {"meow"}));
+//    TODO add winzip arg generators
     app.runTest(l);
   }
 }
