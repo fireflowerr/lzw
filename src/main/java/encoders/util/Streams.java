@@ -1,6 +1,5 @@
 package encoders.util;
 
-import encoders.util.unchecked.URunnable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -140,7 +139,13 @@ public class Streams {
     Stream<Byte> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
         (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
 
-    return ret.onClose(URunnable.unchecked(in::close));
+    return ret.onClose(() -> {
+        try {
+          in.close();
+        }catch(IOException e) {
+          throw new UncheckedIOException(e);
+        }
+    });
   }
 
 }

@@ -11,7 +11,6 @@ import java.io.OutputStream;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,8 +19,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-import java.util.logging.StreamHandler;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -247,7 +244,6 @@ public final class App {
       } else {
         tmp.forEach(this::writeOut);
       }
-      writeOut(lineSepr);
     }
   }
 

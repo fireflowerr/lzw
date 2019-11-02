@@ -11,24 +11,24 @@ import java.nio.file.Paths;
 import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import encoders.util.Pair;
-import encoders.util.unchecked.UConsumer;
-import encoders.util.unchecked.URunnable;
-import encoders.util.unchecked.USupplier;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.READ;
-import static java.nio.file.StandardOpenOption.WRITE;
 
 public class Test {
   private static final Logger LOGGER = Logger.getLogger(Test.class.getName());
+  private static final Runtime RUNTIME = Runtime.getRuntime();
   private static String encodeDir = "encode";
   private static String decodeDir = "decode";
   private static String hashExt = ".md5";
@@ -44,29 +44,31 @@ public class Test {
     String[] tmp = new String[args.length - 1];
     System.arraycopy(args, 1, tmp, 0, args.length - 1);
     target = Paths.get(root, tmp);
-
-    try {
-      initDirectory();
-    } catch(IOException e) {
-      LOGGER.log(Level.SEVERE
-        , "unable to initialize target directory for testing", e);
-      System.exit(1);
-    }
+    initDirectory();
   }
 
-  private void initDirectory() throws IOException {
+  private void initDirectory() {
     Stream.of(encodeDir, decodeDir)
       .map(target::resolve)
-      .forEach(UConsumer.unchecked(this::wipeCreateDir));
+      .forEach(this::wipeCreateDir);
   }
 
-  private void wipeCreateDir(Path dir) throws IOException {
-    if(Files.isDirectory(dir)) {
-      Files.list(dir)
-        .forEach(UConsumer.unchecked(Files::delete));
-    } else {
-      Files.deleteIfExists(dir);
-      Files.createDirectory(dir);
+  private void wipeCreateDir(Path dir) {
+    try {
+      if(Files.isDirectory(dir)) {
+        for(Iterator<Path> delItr = Files.list(dir).iterator(); delItr.hasNext();) {
+            Path del = delItr.next();
+            Files.delete(del);
+        }
+      } else {
+        Files.deleteIfExists(dir);
+        Files.createDirectory(dir);
+      }
+    } catch(IOException e) {
+      LOGGER.log(Level.SEVERE
+        , "error initializing target directory for testing -> " + e.getMessage()
+        , e);
+      System.exit(1);
     }
   }
 
@@ -101,8 +103,9 @@ public class Test {
     };
   }
 
-  private void runTest() {
-    Runtime runtime = Runtime.getRuntime();
+  private void runTest(List<Pair<
+      Function<Path, String[]>
+    , Function<Path, String[]>>> executors) {
 
     Iterator<Path> itr = null;
     try {
@@ -111,86 +114,107 @@ public class Test {
         .filter(x -> !isMD5(hashExt, x))
         .iterator();
     } catch(IOException e) {
-      LOGGER.log(Level.SEVERE, "cannot stat target dir -> " + e.getMessage(), e);
+      LOGGER.log(Level.SEVERE
+        , "cannot stat target dir -> " + e.getMessage()
+        , e);
       System.exit(1);
     }
 
     System.out.printf("%-12s%-8s%-14s%-14s%-4s%n", "FILE", "STATUS", "IN SIZE", "OUT SIZE", "CR");
-    Path p = null;
-    boolean pass = true;
+    String formatter = "%-15s  %-4s  %8.2f %-3s  %8.2f %-3s    %-6.2f    |    ";
     while(itr.hasNext()) {
-      p = itr.next();
-
-      String inHash = null;
-      Path md5 = appendToFileName(hashExt, p);
-      if(!Files.exists(md5)) {
-        inHash = writeMD5(p);
-      } else {
-        try {
-          inHash = new String(Files.readAllBytes(md5));
-        } catch(IOException e) {
-          LOGGER.log(Level.SEVERE, "failed to get md5 -> " + e.getMessage(), e);
-          pass = false;
-        }
-      }
-
-      String[] lzwEnArgs =  lzwEncodeArgs(p);
-      try {
-        runtime.exec(lzwEnArgs).waitFor();
-      } catch(Exception e) {
-        LOGGER.log(Level.SEVERE
-            , "external encoding invocation failed to execute -> " + e.getMessage()
-            , e);
-        pass = false;
-      }
-
-      // decode
-      int tmp = lzwEnArgs.length - 1;
-      Path enPath = Paths.get(lzwEnArgs[tmp]);
-      String[] lzwDeArgs = lzwDecodeArgs(enPath);
-      try {
-        runtime.exec(lzwDeArgs).waitFor();
-      } catch(Exception e) {
-        LOGGER.log(Level.SEVERE
-            , "external decoding invocation failed to execute -> " + e.getMessage()
-            , e);
-        pass = false;
-      }
-
-      tmp = lzwDeArgs.length - 1;
-      String outHash = writeMD5(Paths.get(lzwDeArgs[tmp]));
-      pass = pass && inHash.equals(outHash);
-      String status = pass ? "PASS" : "FAIL";
-
-      if(pass) {
-        long inSz = 0;
-        long outSz = 0;
-        try {
-          inSz = Files.size(p);
-          outSz = Files.size(enPath);
-        } catch(IOException e) {
-          LOGGER.log(Level.SEVERE, "cannot fetch file size -> " + e.getMessage(), e);
-        }
-        Pair<Float, String> fInSz = formatSz(inSz);
-        Pair<Float, String> fOutSz = formatSz(outSz);
-        float ratio = inSz / (float)outSz;
-
-        System.out.printf("%-10s  %-4s  %8.2f %-3s  %8.2f %-3s    %-6.2f%n"
-          , p.getFileName().toString()
-          , status
-          , fInSz.fst
-          , fInSz.snd
-          , fOutSz.fst
-          , fOutSz.snd
-          , ratio);
-      }
-
+      Path p = itr.next();
+      executors.forEach(x -> runExternalUnit(formatter, p, x.fst, x.snd));
+      System.out.println();
     }
+  }
+
+  private static void runExternalUnit(String formatter
+    , Path p
+    , Function<Path, String[]> getEnArgs
+    , Function<Path, String[]> getDeArgs) {
+
+    boolean pass = true;
+    String inHash = null;
+    Path md5 = appendToFileName(hashExt, p);
+    if(!Files.exists(md5)) {
+      inHash = writeMD5(p);
+    } else {
+      try {
+        inHash = new String(Files.readAllBytes(md5));
+      } catch(IOException e) {
+        LOGGER.log(Level.SEVERE
+          , "failed to get md5 -> " + e.getMessage()
+          , e);
+        pass = false;
+      }
+    }
+
+    String[] lzwEnArgs = getEnArgs.apply(p);
+    try {
+      RUNTIME.exec(lzwEnArgs).waitFor();
+    } catch(Exception e) {
+      LOGGER.log(Level.SEVERE
+          , "external encoding invocation failed to execute -> " + e.getMessage()
+          , e);
+      pass = false;
+    }
+
+    // decode
+    int tmp = lzwEnArgs.length - 1;
+    Path enPath = Paths.get(lzwEnArgs[tmp]);
+    String[] lzwDeArgs = getDeArgs.apply(enPath);
+    try {
+      RUNTIME.exec(lzwDeArgs).waitFor();
+    } catch(Exception e) {
+      LOGGER.log(Level.SEVERE
+          , "external decoding invocation failed to execute -> " + e.getMessage()
+          , e);
+      pass = false;
+    }
+
+    tmp = lzwDeArgs.length - 1;
+    String outHash = writeMD5(Paths.get(lzwDeArgs[tmp]));
+    pass = pass && inHash.equals(outHash);
+    String status = pass ? "PASS" : "FAIL";
+
+    if(pass) {
+      long inSz = 0;
+      long outSz = 0;
+      try {
+        inSz = Files.size(p);
+        outSz = Files.size(enPath);
+      } catch(IOException e) {
+        LOGGER.log(Level.SEVERE, "cannot fetch file size -> " + e.getMessage(), e);
+      }
+      Pair<Float, String> fInSz = formatSz(inSz);
+      Pair<Float, String> fOutSz = formatSz(outSz);
+      float ratio = inSz / (float)outSz;
+
+      System.out.printf(formatter
+        , p.getFileName()
+        , status
+        , fInSz.fst
+        , fInSz.snd
+        , fOutSz.fst
+        , fOutSz.snd , ratio);
+    } else {
+      System.out.printf("%-15s  %-4s", p.getFileName(), status);
+    }
+
   }
 
   private static String writeMD5(Path p) {
     Path hashP = appendToFileName(hashExt, p);
-    MessageDigest md5 = USupplier.unchecked(() -> MessageDigest.getInstance("MD5")).get();
+    MessageDigest md5 = null;
+    try {
+      md5 = MessageDigest.getInstance("MD5");
+    } catch(NoSuchAlgorithmException e) {
+      LOGGER.log(Level.SEVERE
+        , "unable to retrieve md5 algorithm -> " + e.getMessage()
+        , e) ;
+      System.exit(1);
+    }
     try(DigestInputStream dig = new DigestInputStream(new BufferedInputStream(
           Files.newInputStream(p, CREATE, TRUNCATE_EXISTING, READ))
         , md5)) {
@@ -255,6 +279,8 @@ public class Test {
 
   public static void main(String[] args) {
     Test app = new Test(args);
-    app.runTest();
+    List<Pair<Function<Path, String[]>, Function<Path, String[]>>> l = new ArrayList<>();
+    l.add(new Pair<>(app::lzwEncodeArgs, app::lzwDecodeArgs));
+    app.runTest(l);
   }
 }
