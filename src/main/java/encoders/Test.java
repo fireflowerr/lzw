@@ -114,16 +114,41 @@ public class Test {
   private String[] lzwDecodeArgs(Path f) {
     String name = f.getFileName().toString();
     return new String[] {
-      "java"
-        ,  "-jar"
-        ,  "lzw.jar"
-        , "-d"
-        ,  "-f"
-        , f.toString()
-        , "-w"
-        , f.getParent().getParent()
-        .resolve(decodeDir)
-        .resolve(name).toString()
+        "java"
+      ,  "-jar"
+      ,  "lzw.jar"
+      , "-d"
+      ,  "-f"
+      , f.toString()
+      , "-w"
+      , f.getParent().getParent()
+            .resolve(decodeDir)
+            .resolve(name).toString()
+    };
+  }
+
+  private String[] winzipEncodeArgs(Path f) {
+    String name = f.getFileName().toString();
+    return new String[] {
+        "wzzip.exe"
+      , "-a"
+      , f.getParent()
+            .resolve(encodeDir)
+            .resolve(name + "$" + "winzip").toString()
+      , f.toString()
+    };
+  }
+
+  private String[] winzipDecodeArgs(Path f) {
+    String name = f.getFileName().toString();
+    return new String[] {
+        "wzunzip"
+      ,  "-d"
+      , "-d"
+      , f.toString()
+      , f.getParent().getParent()
+            .resolve(decodeDir)
+            .resolve(name).toString()
     };
   }
 
@@ -320,7 +345,7 @@ public class Test {
     Test app = new Test(args);
     List<Tuple3<String, Function<Path, String[]>, Function<Path, String[]>>> l = new ArrayList<>();
     l.add(new Tuple3<>("lzw", app::lzwEncodeArgs, app::lzwDecodeArgs));
-//    l.add(new Tuple3<>("test", x -> new String[] {"meow"}, x -> new String[] {"meow"}));
+    l.add(new Tuple3<>("wzip", app::winzipEncodeArgs, app::winzipDecodeArgs));
 //    TODO add winzip arg generators
     app.runTest(l);
   }
