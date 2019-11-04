@@ -41,7 +41,7 @@ public class Test {
 
   public Test(String[] args) {
     List<String> lArgs = Arrays.stream(args).collect(Collectors.toList());
-    stacktrace = lArgs.remove("--stacktrace");
+    stacktrace = lArgs.remove("--logging");
     if(stacktrace) {
       LOGGER.setLevel(Level.ALL);
     } else {

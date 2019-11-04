@@ -336,6 +336,7 @@ public final class App {
 
   private static void abort() {
     LOGGER.log(Level.INFO, "exit 1");
+    System.out.println("FAILURE: aborted");
     System.exit(1);
   }
 
