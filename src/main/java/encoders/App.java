@@ -16,8 +16,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -48,16 +46,20 @@ public final class App<A> {
 
   public App(CliParser cli
     , BidiDict<Pair<A, Integer>, Integer> dict
-    , Coder<Byte,A> primer) {
+    , Coder<Byte,A> primer
+    , String fmt) {
 
     this.cli = cli;
     cliLogging = cli.logging();
     Runnable counter = null;
+
     if(cliLogging) { // enable printing extra log info
       LOGGER.setLevel(Level.ALL);
       Handler dbgInfo = new ConsoleHandler();
       dbgInfo.setLevel(Level.ALL);
+      dbgInfo.setFilter(x -> x.getLevel().intValue() < Level.INFO.intValue());
       counter = () -> byteC++;
+      LOGGER.addHandler(dbgInfo);
     } else {
       LOGGER.setLevel(Level.WARNING);
     }
@@ -77,9 +79,16 @@ public final class App<A> {
     Coder<Boolean, Byte> finisher = new BaseCoder<>(Streams::mapToByte
       , x -> x.flatMap(Streams::streamToBin));
 
-    raw = primer.compose(lzw);
-    coder = raw.compose(ge)
-        .compose(finisher);
+    if(cliLogging) {
+      raw = interweaveLog(primer, "primer", "0x%2x", fmt)
+          .compose(lzw);
+      coder = raw.compose(interweaveLog(ge, "rice", "%d", "%b"))
+          .compose(interweaveLog(finisher, "finisher", "%b", "0x%2x"));
+    } else {
+      raw = primer.compose(lzw);
+      coder = raw.compose(ge)
+          .compose(finisher);
+    }
   }
 
   public void run() {
@@ -200,13 +209,6 @@ public final class App<A> {
 
   private void encode() {
 
-    Optional<Runnable> counter = null;
-    if(cli.verbose()) {
-      counter = Optional.of(() -> byteC++);
-    } else {
-      counter = Optional.empty();
-    }
-
     if(cli.identity()) {
       coder.decode(coder.encode(cIn))
           .forEach(this::writeOut);
@@ -319,6 +321,39 @@ public final class App<A> {
     }
   }
 
+  private static <A, B> Coder<A, B> interweaveLog(
+      Coder<A,B> t
+    , String passName
+    , String aFmt
+    , String bFmt) {
+
+    String aFormat = "%s %c %s: " + aFmt;
+    String bFormat = "%s %c %s: " + bFmt;
+
+    Coder<A, A> inLog = new BaseCoder<>(
+        x -> logDbg(x, aFormat, passName, 'e', "in")
+      , x -> logDbg(x, aFormat, passName, 'd', "out")
+    );
+
+    Coder<B, B> outLog = new BaseCoder<>(
+        x -> logDbg(x, bFormat, passName, 'e', "out")
+      , x -> logDbg(x, bFormat, passName, 'd', "in")
+    );
+
+    return Coder.compose(inLog, t)
+        .compose(outLog);
+  }
+
+  private static <A> Stream<A> logDbg(
+      Stream<A> s
+    , String fmt
+    , String passName
+    , char key
+    , String io) {
+
+    return s.peek(x -> LOGGER.log(Level.FINE, String.format(fmt, passName, key, io, x)));
+  }
+
   private static void abort() {
     LOGGER.log(Level.INFO, "exit 1");
     System.out.println("FAILURE: aborted");
@@ -329,16 +364,29 @@ public final class App<A> {
   public static void main(String[] args) {
     CliParser cli = new CliParser(args);
     if(cli.binary()) {
+
       Coder<Byte, Boolean> primer = new BaseCoder<>(
           x -> x.flatMap(Streams::streamToBin)
         , Streams::mapToByte);
-      App<Boolean> app = new App<Boolean>(cli, Lzw.getDict2(), primer);
+
+      App<Boolean> app = new App<Boolean>(
+          cli
+        , Lzw.getDict2()
+        , primer
+        , "%b");
+
       app.run();
+
     } else {
       Coder<Byte, Byte> primer = new BaseCoder<>(x -> x, x -> x);
-      App<Byte> app = new App<>(cli, Lzw.getDict8(), primer);
+      App<Byte> app = new App<>(
+          cli
+        , Lzw.getDict8()
+        , primer
+        , "0x%2x");
       app.run();
     }
+
     LOGGER.log(Level.INFO, "exit 0");
     System.exit(0);
   }
