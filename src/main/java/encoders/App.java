@@ -27,8 +27,9 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;;
 
 
-public final class App {
+public final class App<A> {
   private static final Logger LOGGER = Logger.getLogger(App.class.getName());
+  private static byte[] lineSepr = System.getProperty("line.separator").getBytes();
 
   private CliParser cli;
   private long inSz;
@@ -37,18 +38,26 @@ public final class App {
   private long statusMod;
   private int geParam;
   private GolombRice ge;
+  private Lzw<A> lzw;
   private Stream<Byte> cIn;
+  private Stream<A> in;
   private OutputStream cOut;
   private boolean cliLogging = false;
-  private static byte[] lineSepr = System.getProperty("line.separator").getBytes();
+  private Coder<Byte, Integer> raw;
+  private Coder<Byte, Byte> coder;
 
-  public App(String[] args) {
-    cli = new CliParser(args);
+  public App(CliParser cli
+    , BidiDict<Pair<A, Integer>, Integer> dict
+    , Coder<Byte,A> primer) {
+
+    this.cli = cli;
     cliLogging = cli.logging();
+    Runnable counter = null;
     if(cliLogging) { // enable printing extra log info
       LOGGER.setLevel(Level.ALL);
       Handler dbgInfo = new ConsoleHandler();
       dbgInfo.setLevel(Level.ALL);
+      counter = () -> byteC++;
     } else {
       LOGGER.setLevel(Level.WARNING);
     }
@@ -56,43 +65,36 @@ public final class App {
     initCin();
     initCout();
 
+    lzw = new Lzw<>(dict, counter);
+
     if(ge == null) {
       if(cli.tunable()) {
         geParam = Integer.valueOf(cli.getTunableArg());
       }
       ge = new GolombRice(geParam);
     }
+
+    Coder<Boolean, Byte> finisher = new BaseCoder<>(Streams::mapToByte
+      , x -> x.flatMap(Streams::streamToBin));
+
+    raw = primer.compose(lzw);
+    coder = raw.compose(ge)
+        .compose(finisher);
   }
 
   public void run() {
-    if(cli.binary()) {
-      Function<Stream<Boolean>, Stream<Byte>> normalizer = Streams::mapToByte;
-
-      if(cli.decode()) {
-        decode(Lzw.getDict2().flip(), normalizer);
-      } else {
-        encode(Lzw.getDict2()
-          , cIn.flatMap(Streams::streamToBin)
-          , normalizer);
-      }
+    if(cli.decode()) {
+      decode();
     } else {
-      Function<Stream<Byte>, Stream<Byte>> normalizer = x -> x;
-
-      if(cli.decode()) {
-        decode(Lzw.getDict8().flip(), normalizer);
-      } else {
-        encode(Lzw.getDict8()
-          , cIn
-          , normalizer);
-      }
+      encode();
     }
 
-    try {
-      cIn.close();
-      cOut.close();
-    } catch(Exception e) {
-      LOGGER.log(Level.WARNING, "unable to close IO stream -> " + e.getMessage(), e);
-    }
+  try {
+    cIn.close();
+    cOut.close();
+  } catch(Exception e) {
+    LOGGER.log(Level.WARNING, "unable to close IO stream -> " + e.getMessage(), e);
+  }
   }
 
   private void initCin() {
@@ -191,22 +193,12 @@ public final class App {
     }
   }
 
-  private <A> void decode(
-      BidiDict<Integer, Pair<A, Integer>> dict
-    , Function<Stream<A>, Stream<Byte>> normalizer) {
-
-    Stream<A> tmp = Lzw.decode(dict
-            , ge.decode(cIn.flatMap(Streams::streamToBin)))
-          .flatMap(x -> x.stream());
-
-    normalizer.apply(tmp)
+  private void decode() {
+    coder.decode(cIn)
         .forEach(this::writeOut);
   }
 
-  private <A> void encode(
-      BidiDict<Pair<A, Integer>, Integer> dict
-    , Stream<A> cIn
-    , Function<Stream<A>, Stream<Byte>> normalizer) {
+  private void encode() {
 
     Optional<Runnable> counter = null;
     if(cli.verbose()) {
@@ -216,18 +208,12 @@ public final class App {
     }
 
     if(cli.identity()) {
-      Stream<A> tmp = Lzw.decode(dict.flip() // proof of correctness
-          , ge.decode(Streams.mapToByte(Lzw.encode(dict, cIn, counter)
-              .flatMap(ge::encode))
-            .flatMap(Streams::streamToBin)))
-        .flatMap(x -> x.stream());
-
-      normalizer.apply(tmp)
-        .forEach(this::writeOut);
+      coder.decode(coder.encode(cIn))
+          .forEach(this::writeOut);
       writeOut(lineSepr);
 
     } else if(cli.raw()) {
-      Lzw.encode(dict, cIn, counter)
+      raw.encode(cIn)
         .map(x -> x.toString() + ",")
         .map(x -> x.getBytes())
         .forEach(this::writeOut);
@@ -235,8 +221,7 @@ public final class App {
 
     } else {
       writeOut((byte)geParam);
-      Stream<Byte> tmp = Streams.mapToByte(Lzw.encode(dict, cIn, counter)
-          .flatMap(ge::encode));
+      Stream<Byte> tmp = coder.encode(cIn);
 
       if(cli.verbose() && (cli.write() || cli.silent())) {
         statusMod = inSz / 20;
@@ -342,10 +327,20 @@ public final class App {
 
 
   public static void main(String[] args) {
-      App app = new App(args);
+    CliParser cli = new CliParser(args);
+    if(cli.binary()) {
+      Coder<Byte, Boolean> primer = new BaseCoder<>(
+          x -> x.flatMap(Streams::streamToBin)
+        , Streams::mapToByte);
+      App<Boolean> app = new App<Boolean>(cli, Lzw.getDict2(), primer);
       app.run();
-      LOGGER.log(Level.INFO, "exit 0");
-      System.exit(0);
+    } else {
+      Coder<Byte, Byte> primer = new BaseCoder<>(x -> x, x -> x);
+      App<Byte> app = new App<>(cli, Lzw.getDict8(), primer);
+      app.run();
+    }
+    LOGGER.log(Level.INFO, "exit 0");
+    System.exit(0);
   }
 
 }

@@ -15,18 +15,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 
-public class Lzw {
+public class Lzw<A> extends Coder<A, Integer>{
 
 
   private static final Integer LZW_BOT = -1;
+  private BidiDict<Pair<A, Integer>, Integer> dict;
+  private Optional<Runnable> counter;
 
-  public static <A> Stream<Integer> encode( // returns a lazily generated stream of the compressed sequence
-      BidiDict<Pair<A, Integer>, Integer> dictionary
-    , Stream<A> in
-    , Optional<Runnable> counter) {
+  public Lzw(BidiDict<Pair<A, Integer>, Integer> dict, Runnable counter) {
+    this.dict = dict;
+    this.counter = Optional.ofNullable(counter);
+  }
+
+  @Override
+  public Stream<Integer> encode(Stream<A> in) { // returns a lazily generated stream of the compressed sequence
 
     Iterator<Integer> spine = new Iterator<Integer>() {
-        BidiDict<Pair<A, Integer>, Integer> dict = dictionary;
         Iterator<A> itr = in.iterator();
         A a = null;
         Integer index = LZW_BOT;
@@ -64,36 +68,34 @@ public class Lzw {
         (spine, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
   }
 
-  public static <A> Stream<List<A>> decode( // returns a lazily generated stream of decoded words
-      BidiDict<Integer, Pair<A, Integer>> dictionary
-    , Stream<Integer> in) {
+  @Override
+  public Stream<A> decode(Stream<Integer> in) { // returns a lazily generated stream of decoded words
 
+    BidiDict<Integer, Pair<A, Integer>> tmpDict = this.dict.flip();
     Iterator<Integer> itr = in.iterator();
     if(itr.hasNext()) {
       Integer tmp = itr.next();
 
-      Iterator<List<A>> spine = new Iterator<List<A>>() {
-          BidiDict<Integer, Pair<A, Integer>> dict = dictionary;
+      Iterator<A> spine = new Iterator<A>() {
 
+          BidiDict<Integer, Pair<A, Integer>> dict = tmpDict;
           //decoder must be primed
           Integer i = tmp;
           Optional<Pair<A, Integer>> lup = dict.lookup(i);
           A prevA = lup.get().fst;
           Deque<A> word = new ArrayDeque<>(Collections.singleton(prevA));
-          int wordSz = 1;
 
           @Override
           public boolean hasNext() {
-            return wordSz > 0;
+            return !word.isEmpty();
           }
 
           @Override
-          public List<A> next() { //LZW decode alg
+          public A next() { //LZW decode alg
 
-            List<A> ret = new ArrayList<>(wordSz); // return prev match
-            while(wordSz > 0) {
-              ret.add(word.pop());
-              wordSz--;
+            A ret = word.pop(); // return prev match
+            if(!word.isEmpty()) {
+              return ret;
             }
 
             if(itr.hasNext()) {
@@ -104,10 +106,8 @@ public class Lzw {
 
               while(lupV.snd != LZW_BOT) { // decode word
                 word.push(lupV.fst);
-                wordSz++;
                 lupV = dict.lookupUnsafe(lupV.snd);
               }
-              wordSz++;
               word.push(lupV.fst);
               prevA = lupV.fst;
 
@@ -122,6 +122,16 @@ public class Lzw {
     } else {
       return Stream.empty();
     }
+  }
+
+  @Override
+  public StreamTransformer<A, Integer> getEncoder() {
+    return this::encode;
+  }
+
+  @Override
+  public StreamTransformer<Integer, A> getDecoder() {
+    return this::decode;
   }
 
   public static Integer getLzwBot() {

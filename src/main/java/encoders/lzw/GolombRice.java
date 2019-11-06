@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 
-public class GolombRice {
+public class GolombRice extends Coder<Integer, Boolean>{
 
   private int k;
   private int m;
@@ -29,7 +29,7 @@ public class GolombRice {
     m = acc;
   }
 
-  public Stream<Boolean> encode(Integer x) {
+  public Stream<Boolean> encodeDigit(Integer x) {
     Stream.Builder<Boolean> ret = Stream.builder();
 
     for(int q = x / m; q > 0; q--) {
@@ -55,6 +55,12 @@ public class GolombRice {
     return ret.build();
   }
 
+  @Override
+  public Stream<Boolean> encode(Stream<Integer> in) {
+    return in.flatMap(this::encodeDigit);
+  }
+
+  @Override
   public Stream<Integer> decode(Stream<Boolean> in) {
     Iterator<Integer> itr = new Iterator<Integer>() { // will cause exception if imput is malformed
       final Iterator<Boolean> backing = in.iterator();
@@ -112,5 +118,15 @@ public class GolombRice {
     Stream<Integer> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
         (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
     return ret;
+  }
+
+  @Override
+  public StreamTransformer<Integer, Boolean> getEncoder() {
+    return this::encode;
+  }
+
+  @Override
+  public StreamTransformer<Boolean, Integer> getDecoder() {
+    return this::decode;
   }
 }
