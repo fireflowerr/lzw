@@ -28,6 +28,7 @@ public class CliParser {
   private List<String> fArgs = new ArrayList<>();
   private List<String> wArgs = new ArrayList<>();
   private String kArg;
+  private String logArg; // todo implement tiered logging
   static {
     longFlagNames.put("file", 'f');
     longFlagNames.put("write", 'w');

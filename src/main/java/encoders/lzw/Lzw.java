@@ -4,14 +4,12 @@ import encoders.lzw.dict.*;
 import encoders.util.*;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 

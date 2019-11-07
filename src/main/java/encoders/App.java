@@ -230,7 +230,7 @@ public final class App<A> {
       writeOut((byte)geParam);
       Stream<Byte> tmp = coder.encode(cIn);
 
-      if(cli.verbose() && (cli.write() || cli.silent())) {
+      if(cli.verbose() && cli.file() && (cli.write() || cli.silent())) {
         statusMod = inSz / 20;
         tmp.forEach(this::writeStatus);
         statusEnd();
@@ -371,7 +371,7 @@ public final class App<A> {
 
   private static void abort() {
     LOGGER.log(Level.INFO, "exit 1");
-    System.out.println("FAILURE: aborted");
+    System.err.println("FAILURE: aborted");
     System.exit(1);
   }
 
