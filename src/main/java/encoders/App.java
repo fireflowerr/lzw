@@ -34,13 +34,12 @@ public final class App<A> {
   private long outSz;
   private long byteC;
   private long statusMod;
+  private boolean statusEnd = false;
   private int geParam;
   private GolombRice ge;
   private Lzw<A> lzw;
   private Stream<Byte> cIn;
-  private Stream<A> in;
   private OutputStream cOut;
-  private boolean cliLogging = false;
   private Coder<Byte, Integer> raw;
   private Coder<Byte, Byte> coder;
 
@@ -50,25 +49,46 @@ public final class App<A> {
     , String fmt) {
 
     this.cli = cli;
-    cliLogging = cli.logging();
-    Runnable counter = null;
+    initCin();
+    initCout();
+    initLogging();
+    initCoder(dict, primer, fmt);
+  }
 
-    if(cliLogging) { // enable printing extra log info
+  public void run() {
+    if(cli.decode()) {
+      decode();
+    } else {
+      encode();
+    }
+
+    try {
+      cIn.close();
+      cOut.close();
+    } catch(Exception e) {
+      LOGGER.log(Level.WARNING, "unable to close IO stream -> " + e.getMessage(), e);
+    }
+  }
+
+  private void initLogging() {
+    if(cli.logging()) { // enable printing extra log info
       LOGGER.setLevel(Level.ALL);
       Handler dbgInfo = new ConsoleHandler();
       dbgInfo.setLevel(Level.ALL);
       dbgInfo.setFilter(x -> x.getLevel().intValue() < Level.INFO.intValue());
-      counter = () -> byteC++;
       LOGGER.addHandler(dbgInfo);
     } else {
       LOGGER.setLevel(Level.WARNING);
     }
+  }
 
-    initCin();
-    initCout();
+  private void initCoder(
+      BidiDict<Pair<A, Integer>, Integer> dict
+    , Coder<Byte, A> primer
+    , String fmt) {
 
+    Runnable counter = cli.verbose() ? () -> byteC++ : null;
     lzw = new Lzw<>(dict, counter);
-
     if(ge == null) {
       if(cli.tunable()) {
         geParam = Integer.valueOf(cli.getTunableArg());
@@ -79,31 +99,16 @@ public final class App<A> {
     Coder<Boolean, Byte> finisher = new BaseCoder<>(Streams::mapToByte
       , x -> x.flatMap(Streams::streamToBin));
 
-    if(cliLogging) {
-      raw = interweaveLog(primer, "primer", "0x%2x", fmt)
-          .compose(lzw);
+    if(cli.logging()) {
+      raw = interweaveLog(primer, "primer", "0x%02x", fmt)
+          .compose(interweaveLog(lzw, "lzw", fmt, "%d"));
       coder = raw.compose(interweaveLog(ge, "rice", "%d", "%b"))
-          .compose(interweaveLog(finisher, "finisher", "%b", "0x%2x"));
+          .compose(interweaveLog(finisher, "finisher", "%b", "0x%02x"));
     } else {
       raw = primer.compose(lzw);
       coder = raw.compose(ge)
           .compose(finisher);
     }
-  }
-
-  public void run() {
-    if(cli.decode()) {
-      decode();
-    } else {
-      encode();
-    }
-
-  try {
-    cIn.close();
-    cOut.close();
-  } catch(Exception e) {
-    LOGGER.log(Level.WARNING, "unable to close IO stream -> " + e.getMessage(), e);
-  }
   }
 
   private void initCin() {
@@ -228,6 +233,7 @@ public final class App<A> {
       if(cli.verbose() && (cli.write() || cli.silent())) {
         statusMod = inSz / 20;
         tmp.forEach(this::writeStatus);
+        statusEnd();
       } else {
         tmp.forEach(this::writeOut);
       }
@@ -271,14 +277,23 @@ public final class App<A> {
     }
 
     if(byteC == inSz) {
-      float cr = inSz / (float)outSz;
-
-      Pair<Float, String> n = formatSz(outSz);
-      Pair<Float, String> d = formatSz(inSz);
-
-      System.out.printf(">  CR: (%.2f %s/%.2f %s) -> %.3f%n", d.fst, d.snd, n.fst, n.snd, cr);
-      byteC++;
+      statusEnd();
     }
+  }
+
+  private void statusEnd() {
+    if(statusEnd) {
+      return;
+    }
+
+    float cr = inSz / (float)outSz;
+
+    Pair<Float, String> n = formatSz(outSz);
+    Pair<Float, String> d = formatSz(inSz);
+
+    System.out.printf(">  CR: (%.2f %s/%.2f %s) -> %.3f%n", d.fst, d.snd, n.fst, n.snd, cr);
+    byteC++;
+    statusEnd = true;
   }
 
   private static Pair<Float, String> formatSz(long sz) {
@@ -314,7 +329,7 @@ public final class App<A> {
   }
 
   private void logWithException(Level l, String s, Exception e) { // don't print stacktrace if logging is disabled
-    if(cliLogging) {
+    if(cli.logging()) {
       LOGGER.log(l, s, e);
     } else {
       LOGGER.log(l, s);

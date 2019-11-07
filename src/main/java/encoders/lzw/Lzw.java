@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 
-public class Lzw<A> extends Coder<A, Integer>{
+public class Lzw<A> implements Coder<A, Integer>{
 
 
   private static final Integer LZW_BOT = -1;
@@ -122,16 +122,6 @@ public class Lzw<A> extends Coder<A, Integer>{
     } else {
       return Stream.empty();
     }
-  }
-
-  @Override
-  public StreamTransformer<A, Integer> getEncoder() {
-    return this::encode;
-  }
-
-  @Override
-  public StreamTransformer<Integer, A> getDecoder() {
-    return this::decode;
   }
 
   public static Integer getLzwBot() {

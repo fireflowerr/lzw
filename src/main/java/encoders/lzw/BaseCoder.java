@@ -2,7 +2,7 @@ package encoders.lzw;
 
 import java.util.stream.Stream;
 
-public class BaseCoder<A,B> extends Coder<A,B> {
+public class BaseCoder<A,B> implements Coder<A,B> {
 
   private StreamTransformer<A, B> encoder;
   private StreamTransformer<B, A> decoder;
@@ -24,13 +24,4 @@ public class BaseCoder<A,B> extends Coder<A,B> {
     return decoder.transform(in);
   }
 
-  @Override
-  public StreamTransformer<A, B> getEncoder() {
-    return encoder;
-  }
-
-  @Override
-  public StreamTransformer<B, A> getDecoder() {
-    return decoder;
-  }
 }

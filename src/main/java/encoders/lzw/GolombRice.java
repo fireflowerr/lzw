@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 
-public class GolombRice extends Coder<Integer, Boolean>{
+public class GolombRice implements Coder<Integer, Boolean>{
 
   private int k;
   private int m;
@@ -120,13 +120,4 @@ public class GolombRice extends Coder<Integer, Boolean>{
     return ret;
   }
 
-  @Override
-  public StreamTransformer<Integer, Boolean> getEncoder() {
-    return this::encode;
-  }
-
-  @Override
-  public StreamTransformer<Boolean, Integer> getDecoder() {
-    return this::decode;
-  }
 }
