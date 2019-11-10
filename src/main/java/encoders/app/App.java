@@ -1,4 +1,7 @@
-package encoders;
+package encoders.app;
+import encoders.app.cli.Cli;
+import encoders.app.cli.CliBuilder;
+import encoders.app.cli.NoSuchFlagException;
 import encoders.lzw.*;
 import encoders.lzw.dict.*;
 import encoders.util.*;
@@ -27,9 +30,23 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;;
 
 public final class App<A> {
   private static final Logger LOGGER = Logger.getLogger(App.class.getName());
-  private static byte[] lineSepr = System.getProperty("line.separator").getBytes();
+  private static List<Tuple3<String, Integer, Character>> tui;
+  static {
+    LOGGER.setLevel(Level.WARNING);
+    tui = List.of(
+        new Tuple3<>("file", -1, 'f')
+      , new Tuple3<>("write", -1, 'w')
+      , new Tuple3<>("decode", 0, 'd')
+      , new Tuple3<>("binary", 0, 'b')
+      , new Tuple3<>("tunable", 1, 'k')
+      , new Tuple3<>("identity", 0, 'i')
+      , new Tuple3<>("verbose", 0, 'v')
+      , new Tuple3<>("silent", 0, 's')
+      , new Tuple3<>("logging", 1, 'l')
+    );
+  }
 
-  private CliParser cli;
+  private Cli cli;
   private long inSz;
   private long outSz;
   private long byteC;
@@ -40,10 +57,10 @@ public final class App<A> {
   private Lzw<A> lzw;
   private Stream<Byte> cIn;
   private OutputStream cOut;
-  private Coder<Byte, Integer> raw;
   private Coder<Byte, Byte> coder;
+  private int lvl = 1;
 
-  public App(CliParser cli
+  public App(Cli cli
     , BidiDict<Pair<A, Integer>, Integer> dict
     , Coder<Byte,A> primer
     , String fmt) {
@@ -56,7 +73,7 @@ public final class App<A> {
   }
 
   public void run() {
-    if(cli.decode()) {
+    if(cli.isSet("decode")) {
       decode();
     } else {
       encode();
@@ -71,14 +88,29 @@ public final class App<A> {
   }
 
   private void initLogging() {
-    if(cli.logging()) { // enable printing extra log info
-      LOGGER.setLevel(Level.ALL);
+    if(cli.isSet("logging")) { // enable printing extra log info
+
+      lvl = Integer.valueOf(cli.getArgs("logging").get(0));
+      Level level = null;
+      switch(lvl) {
+        case 0:
+          level = Level.OFF;
+          break;
+        case 1:
+          level = Level.WARNING;
+          break;
+        case 2:
+          level = Level.ALL;
+          break;
+        default:
+          level = Level.ALL;
+          break;
+      }
+      LOGGER.setLevel(level);
       Handler dbgInfo = new ConsoleHandler();
       dbgInfo.setLevel(Level.ALL);
       dbgInfo.setFilter(x -> x.getLevel().intValue() < Level.INFO.intValue());
       LOGGER.addHandler(dbgInfo);
-    } else {
-      LOGGER.setLevel(Level.WARNING);
     }
   }
 
@@ -87,11 +119,11 @@ public final class App<A> {
     , Coder<Byte, A> primer
     , String fmt) {
 
-    Runnable counter = cli.verbose() ? () -> byteC++ : null;
+    Runnable counter = cli.isSet("verbose") ? () -> byteC++ : null;
     lzw = new Lzw<>(dict, counter);
     if(ge == null) {
-      if(cli.tunable()) {
-        geParam = Integer.valueOf(cli.getTunableArg());
+      if(cli.isSet("tunable")) {
+        geParam = Integer.valueOf(cli.getArgs("tunable").get(0));
       }
       ge = new GolombRice(geParam);
     }
@@ -99,26 +131,26 @@ public final class App<A> {
     Coder<Boolean, Byte> finisher = new BaseCoder<>(Streams::mapToByte
       , x -> x.flatMap(Streams::streamToBin));
 
-    if(cli.logging()) {
-      raw = interweaveLog(primer, "primer", "0x%02x", fmt)
-          .compose(interweaveLog(lzw, "lzw", fmt, "%d"));
-      coder = raw.compose(interweaveLog(ge, "rice", "%d", "%b"))
+    if(cli.isSet("logging") && lvl > 1) {
+      coder = interweaveLog(primer, "primer", "0x%02x", fmt)
+          .compose(interweaveLog(lzw, "lzw", fmt, "%d"))
+          .compose(interweaveLog(ge, "rice", "%d", "%b"))
           .compose(interweaveLog(finisher, "finisher", "%b", "0x%02x"));
     } else {
-      raw = primer.compose(lzw);
-      coder = raw.compose(ge)
+      coder = primer.compose(lzw)
+          .compose(ge)
           .compose(finisher);
     }
   }
 
   private void initCin() {
-    List<String> fArgs = cli.getFileArgs();
+    List<String> fArgs = cli.getArgs("file");
     if(fArgs.isEmpty()) {
       LOGGER.log(Level.SEVERE, "expects input or file path as CLI args");
       abort();
     }
 
-    if(cli.file()) {
+    if(cli.isSet("file")) {
 
       Path p = pathFromList(fArgs);
       if(!Files.isRegularFile(p)) {
@@ -144,7 +176,7 @@ public final class App<A> {
         abort();
       }
 
-      if(cli.decode()) {
+      if(cli.isSet("decode")) {
         try{
           geParam = in.read();
         } catch(IOException e) {
@@ -178,16 +210,16 @@ public final class App<A> {
   }
 
   private void initCout() {
-    if(cli.silent()) { // null output stream. Useful with verbose flag
+    if(cli.isSet("silent")) { // null output stream. Useful with verbose flag
       cOut = new OutputStream(){
         @Override
         public void write(int arg0) throws IOException {
           return;
         }
       };
-    } else if(cli.write()) {
+    } else if(cli.isSet("write")) {
 
-      List<String> wArgs = cli.getWriteArgs();
+      List<String> wArgs = cli.getArgs("write");
       if(wArgs.isEmpty()) {
         LOGGER.log(Level.SEVERE, "expects output file path");
         abort();
@@ -213,30 +245,19 @@ public final class App<A> {
   }
 
   private void encode() {
+    writeOut((byte)geParam);
+    Stream<Byte> tmp = coder.encode(cIn);
 
-    if(cli.identity()) {
-      coder.decode(coder.encode(cIn))
-          .forEach(this::writeOut);
-      writeOut(lineSepr);
-
-    } else if(cli.raw()) {
-      raw.encode(cIn)
-        .map(x -> x.toString() + ",")
-        .map(x -> x.getBytes())
-        .forEach(this::writeOut);
-      writeOut(lineSepr);
-
+    if(cli.isSet("verbose") && cli.isSet("file") && (cli.isSet("write") || cli.isSet("silent"))) {
+      statusMod = inSz / 20;
+      tmp.forEach(this::writeStatus);
+      statusEnd();
     } else {
-      writeOut((byte)geParam);
-      Stream<Byte> tmp = coder.encode(cIn);
 
-      if(cli.verbose() && cli.file() && (cli.write() || cli.silent())) {
-        statusMod = inSz / 20;
-        tmp.forEach(this::writeStatus);
-        statusEnd();
-      } else {
-        tmp.forEach(this::writeOut);
+      if(cli.isSet("identity")) {
+        tmp = coder.decode(tmp);
       }
+      tmp.forEach(this::writeOut);
     }
   }
 
@@ -329,7 +350,7 @@ public final class App<A> {
   }
 
   private void logWithException(Level l, String s, Exception e) { // don't print stacktrace if logging is disabled
-    if(cli.logging()) {
+    if(cli.isSet("logging")) {
       LOGGER.log(l, s, e);
     } else {
       LOGGER.log(l, s);
@@ -377,8 +398,18 @@ public final class App<A> {
 
 
   public static void main(String[] args) {
-    CliParser cli = new CliParser(args);
-    if(cli.binary()) {
+    Cli cli = null;
+    try {
+      cli = new CliBuilder()
+          .init3(tui)
+          .setDefaultFlag("file")
+          .build(args);
+    } catch(NoSuchFlagException e) {
+      LOGGER.log(Level.SEVERE, e.getMessage());
+      abort();
+    }
+
+    if(cli.isSet("binary")) {
 
       Coder<Byte, Boolean> primer = new BaseCoder<>(
           x -> x.flatMap(Streams::streamToBin)

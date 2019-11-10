@@ -1,4 +1,4 @@
-package encoders;
+package encoders.app;
 
 import java.util.ArrayList;
 import java.util.Arrays;
