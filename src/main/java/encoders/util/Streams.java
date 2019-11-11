@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -146,6 +147,32 @@ public class Streams {
           throw new UncheckedIOException(e);
         }
     });
+  }
+
+  public static <A,B> Stream<B> fold(BiFunction<A,Boolean,Deque<B>> gen, Stream<A> in) {
+
+    Iterator<B> spine = new Iterator<B>() {
+      private Iterator<A> itr = in.iterator();
+      private Deque<B> cache;
+
+      @Override
+      public boolean hasNext() {
+        return !cache.isEmpty() || itr.hasNext();
+      }
+
+      @Override
+      public B next() {
+        boolean alive = true;
+        while(cache.isEmpty() && alive) {
+          cache = gen.apply(itr.next(), (alive = itr.hasNext()));
+        }
+
+        return cache.pop();
+      }
+    };
+    Stream<B> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
+        (spine, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
+    return ret;
   }
 
 }
