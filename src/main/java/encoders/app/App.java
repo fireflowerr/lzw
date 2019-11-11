@@ -2,10 +2,9 @@ package encoders.app;
 import encoders.app.cli.Cli;
 import encoders.app.cli.CliBuilder;
 import encoders.app.cli.NoSuchFlagException;
-import encoders.lzw.*;
-import encoders.lzw.dict.*;
+import encoders.coder.*;
+import encoders.dict.*;
 import encoders.util.*;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;

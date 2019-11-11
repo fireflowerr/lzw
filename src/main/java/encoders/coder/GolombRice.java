@@ -1,4 +1,4 @@
-package encoders.lzw;
+package encoders.coder;
 
 import java.util.ArrayDeque;
 import java.util.Deque;

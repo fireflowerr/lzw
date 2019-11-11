@@ -1,6 +1,8 @@
-package encoders.lzw;
+package encoders.coder;
 
 import java.util.stream.Stream;
+
+import encoders.util.StreamTransformer;
 
 public interface Coder<A, B> {
 

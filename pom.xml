@@ -28,7 +28,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>lamar.App</mainClass>
+              <mainClass>lamar.app.App</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -43,7 +43,7 @@
               <archive>
                 <manifest>
                   <addClasspath>true</addClasspath>
-                  <mainClass>lamar.Test</mainClass>
+                  <mainClass>lamar.app.Test</mainClass>
                 </manifest>
               </archive>
             </configuration>

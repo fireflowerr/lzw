@@ -1,6 +1,6 @@
-package encoders.lzw;
+package encoders.coder;
 
-import encoders.lzw.dict.*;
+import encoders.dict.*;
 import encoders.util.*;
 
 import java.util.Iterator;

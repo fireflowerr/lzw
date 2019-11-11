@@ -1,4 +1,4 @@
-package encoders.lzw;
+package encoders.util;
 import java.util.stream.Stream;
 
 @FunctionalInterface
