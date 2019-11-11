@@ -42,60 +42,40 @@ public class Streams {
   }
 
   public static Stream<Byte> mapToByte(Stream<Boolean> in) {
-    Iterator <Byte> spine = new Iterator<Byte>() {
-      final Iterator<Boolean> backing = in.iterator();
-      int nxt = -1;
+    BiFunction<Boolean,Boolean,Deque<Byte>> gen = new BiFunction<Boolean,Boolean,Deque<Byte>>() {
       final static int maxDigVal = 256;
+      int pow = maxDigVal;
       int i = 0;
+      int acc = 0;
+      Deque<Byte> result = new ArrayDeque<>(1);
 
-      @Override
-      public boolean hasNext() {
-        if(nxt == -1) {
+      public Deque<Byte> apply(Boolean bit, Boolean end) {
+        pow = pow >>> 1;
 
-          int pow = maxDigVal;
-          int acc = 0;
-          while(backing.hasNext() && i < BYTE_SZ) {
-            pow = pow >>> 1;
-            if(backing.next()) {
-              acc += pow;
-            }
-            i++;
-          }
+        if(bit) {
+          acc += pow;
+        }
 
-          if(i == 0) {
-            return false;
-          }
-
+        i++;
+        if(end) {
           while(i < BYTE_SZ) { // all 1 serves as eos marker
             pow = pow >>> 1;
             acc += pow;
             i++;
           }
+        }
 
+        if(i == BYTE_SZ) {
+          result.push((byte)acc);
+          acc = 0;
           i = 0;
-          nxt = acc;
-
-          return true;
-        } else {
-          return false;
+          pow = maxDigVal;
         }
-      }
-
-      @Override
-      public Byte next() {
-        if(nxt != -1 || hasNext()) {
-          Byte ret = (byte)nxt;
-          nxt = -1;
-          return ret;
-        } else {
-          throw new NoSuchElementException();
-        }
+        return result;
       }
     };
 
-    Stream<Byte> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
-        (spine, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
-    return ret;
+    return Streams.fold(gen, in);
   }
 
   // Abstracts the action of contiously reading from a BufferedReader to a Stream
@@ -153,7 +133,7 @@ public class Streams {
 
     Iterator<B> spine = new Iterator<B>() {
       private Iterator<A> itr = in.iterator();
-      private Deque<B> cache;
+      private Deque<B> cache = new ArrayDeque<>(0);
 
       @Override
       public boolean hasNext() {
@@ -164,7 +144,7 @@ public class Streams {
       public B next() {
         boolean alive = true;
         while(cache.isEmpty() && alive) {
-          cache = gen.apply(itr.next(), (alive = itr.hasNext()));
+          cache = gen.apply(itr.next(), !(alive = itr.hasNext()));
         }
 
         return cache.pop();
