@@ -6,8 +6,11 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import encoders.util.Streams;
 
 
 public class GolombRice implements Coder<Integer, Boolean>{
@@ -62,62 +65,46 @@ public class GolombRice implements Coder<Integer, Boolean>{
 
   @Override
   public Stream<Integer> decode(Stream<Boolean> in) {
-    Iterator<Integer> itr = new Iterator<Integer>() { // will cause exception if imput is malformed
-      final Iterator<Boolean> backing = in.iterator();
-      final int mRef = m;
-      final int kRef = k;
-      Integer nxt = null;
+
+    BiFunction<Boolean,Boolean,Deque<Integer>> gen = new BiFunction<Boolean,Boolean,Deque<Integer>>() {
+      private int mRef = m;
+      private int kRef = k;
+      private int q = 0;
+      private int r = 0;
+      private Deque<Integer> rCache = new ArrayDeque<>();
+      private boolean unary = true;
 
       @Override
-      public boolean hasNext() {
-        if(nxt == null) {
-          if(backing.hasNext()) {
-
-            int q = 0;
-            try { // GolombRice alg
-              while(backing.next()) {
-                q++;
-              }
-
-              int tmp = mRef >>> 1;
-              int r = 0;
-
-              int i = 0;
-              for(; i < kRef; i++) {
-                if(backing.next()) {
-                  r += tmp;
-                }
-                tmp = tmp >>> 1;
-              }
-              nxt = q * m + r;
-              return true;
-
-            } catch (NoSuchElementException e) {
-              return false;
-            }
+      public Deque<Integer> apply(Boolean bit, Boolean end) {
+        if(unary) {
+          if(bit) {
+            q++;
           } else {
-            return false;
+            unary = false;
           }
-        } else {
-          return true;
+          return rCache;
         }
+
+        mRef = mRef >>> 1;
+        if(kRef-- >= 0) {
+          if(bit) {
+            r += mRef;
+          }
+        }
+        if(kRef == 0) {
+          rCache.push(q * m + r);
+          q = 0;
+          r = 0;
+          mRef = m;
+          kRef = k;
+          unary = true;
+        }
+
+        return rCache;
       }
 
-      @Override
-      public Integer next() {
-        if(nxt != null || hasNext()) {
-          Integer ret = nxt;
-          nxt = null;
-          return ret;
-        } else {
-          throw new NoSuchElementException("stream is exhausted");
-        }
-      }
     };
-
-    Stream<Integer> ret =  StreamSupport.stream(Spliterators.spliteratorUnknownSize
-        (itr, Spliterator.ORDERED | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
-    return ret;
+    return Streams.fold(gen,in);
   }
 
 }

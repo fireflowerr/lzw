@@ -16,6 +16,8 @@ import java.util.logging.Level;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
@@ -186,6 +188,7 @@ public final class App<A> {
         ge = new GolombRice(geParam);
       } else {
         geParam = (int)Math.ceil(Math.log(inSz));
+        ge = new GolombRice(geParam);
       }
 
       try {
@@ -198,11 +201,23 @@ public final class App<A> {
       }
 
     } else {
-      byte[] tmp = String.join(" ", fArgs.toArray(String[]::new)).getBytes();
-      inSz = tmp.length;
+      Deque<Byte> tmp = new ArrayDeque<>();
+      for(Byte b : String.join(" ", fArgs).getBytes()) {
+        tmp.addLast(b);
+      }
+
+      inSz = tmp.size();
+      if(cli.isSet("decode")) {
+        geParam = tmp.poll();
+        ge = new GolombRice(geParam);
+      } else {
+        geParam = (int)Math.ceil(Math.log(inSz));
+        ge = new GolombRice(geParam);
+      }
+
       Stream.Builder<Byte> acc = Stream.builder();
-      for(int i = 0; i < tmp.length; i++) {
-        acc.accept(tmp[i]);
+      while(!tmp.isEmpty()) {
+        acc.accept(tmp.poll());
       }
       cIn = acc.build();
     }
@@ -261,17 +276,6 @@ public final class App<A> {
   }
 
   private void writeOut(Byte b) { //exit on write fail
-    try {
-      cOut.write(b);
-    } catch(IOException e) {
-      logWithException(Level.SEVERE
-        , "error writing to output stream -> " + e.getMessage()
-        , e);
-      abort();
-    }
-  }
-
-  private void writeOut(byte[] b) {
     try {
       cOut.write(b);
     } catch(IOException e) {

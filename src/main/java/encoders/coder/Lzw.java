@@ -35,7 +35,7 @@ public class Lzw<A> implements Coder<A, Integer>{
       private Deque<Integer> cache = new ArrayDeque<>();
 
       @Override
-      public Deque<Integer> apply(A a, Boolean end) {
+      public Deque<Integer> apply(A a, Boolean end) { // lzw enc alg
         lup = dict.lookup(new Pair<>(a, index));
         counter.ifPresent(x -> x.run());
 
@@ -73,7 +73,7 @@ public class Lzw<A> implements Coder<A, Integer>{
       private boolean fst = true;
 
 
-      public Deque<A> apply(Integer i, Boolean end) {
+      public Deque<A> apply(Integer i, Boolean end) { // lzw dec alg
         Optional<Pair<A, Integer>> lup = dict.lookup(i);
         Pair<A, Integer> lupV = lup.orElse(new Pair<>(prevA, prevI)); //Optional acts like a Promise here
 
