@@ -137,7 +137,12 @@ public class Streams {
 
       @Override
       public boolean hasNext() {
-        return !cache.isEmpty() || itr.hasNext();
+        boolean alive = itr.hasNext();
+        while(cache.isEmpty() && alive) {
+          cache = gen.apply(itr.next(), !(alive = itr.hasNext()));
+        }
+
+        return !cache.isEmpty();
       }
 
       @Override
