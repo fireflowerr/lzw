@@ -1,5 +1,8 @@
 package encoders.app.cli;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -13,8 +16,8 @@ public class Cli {
   public Cli(HashMap<String, Pair<Boolean, List<String>>> flags
     , HashMap<Character, String> shortNames) {
 
-    this.flags = flags;
-    this.shortNames = shortNames;
+    this.flags = new HashMap<>(flags);
+    this.shortNames = new HashMap<>(shortNames);
   }
 
   public boolean isSet(String flag) {
@@ -30,13 +33,13 @@ public class Cli {
 
   public List<String> getArgs(String flag) {
     Pair<Boolean, List<String>> tmp = getOrThrow(flag, flags.get(flag));
-    return tmp.snd;
+    return new ArrayList<>(tmp.snd);
   }
 
   public List<String> getArgs(Character flag) {
     String flagName = getOrThrow(flag, shortNames.get(flag));
     Pair<Boolean, List<String>> tmp = getOrThrow(flagName, flags.get(flagName));
-    return tmp.snd;
+    return new ArrayList<>(tmp.snd);
   }
 
   private static <T, R> R getOrThrow(T t, R r) {
