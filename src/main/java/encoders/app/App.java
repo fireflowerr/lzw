@@ -17,10 +17,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -34,7 +36,7 @@ public final class App<A> {
   private static List<Tuple3<String, Integer, Character>> tui;
   static {
     LOGGER.setLevel(Level.WARNING);
-    tui = List.of(
+    tui = Stream.of(
         new Tuple3<>("file", -1, 'f')
       , new Tuple3<>("write", -1, 'w')
       , new Tuple3<>("decode", 0, 'd')
@@ -44,7 +46,8 @@ public final class App<A> {
       , new Tuple3<>("verbose", 0, 'v')
       , new Tuple3<>("silent", 0, 's')
       , new Tuple3<>("logging", 1, 'l')
-    );
+    ).collect(Collectors.collectingAndThen(Collectors.toList()
+      , Collections::unmodifiableList));
   }
 
   private Cli cli;
@@ -344,7 +347,7 @@ public final class App<A> {
     String root = l.remove(0);
     Path p = null;
     if(!l.isEmpty()) {
-      p = Paths.get(root, l.toArray(String[]::new));
+      p = Paths.get(root, l.toArray(new String[0]));
     } else {
       p = Paths.get(root);
     }

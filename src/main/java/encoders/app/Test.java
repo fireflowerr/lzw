@@ -54,7 +54,7 @@ public class Test {
     }
 
     String root = lArgs.remove(0);
-    target = Paths.get(root, lArgs.toArray(String[]::new));
+    target = Paths.get(root, lArgs.toArray(new String[0]));
     initDirectory();
   }
 
