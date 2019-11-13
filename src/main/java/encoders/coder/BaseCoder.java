@@ -4,6 +4,10 @@ import java.util.stream.Stream;
 
 import encoders.util.StreamTransformer;
 
+/**
+ * This functional class enables the composition of {@link Coder} instances. Minimal complete
+ * implementation of {@link Coder}.
+ */
 public class BaseCoder<A,B> implements Coder<A,B> {
 
   private StreamTransformer<A, B> encoder;

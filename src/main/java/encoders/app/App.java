@@ -132,7 +132,7 @@ public final class App<A> {
       ge = new GolombRice(geParam);
     }
 
-    Coder<Boolean, Byte> finisher = new BaseCoder<>(Streams::mapToByte
+    Coder<Boolean, Byte> finisher = new BaseCoder<>(Streams::foldToBytes
       , x -> x.flatMap(Streams::streamToBin));
 
     if(cli.isSet("logging") && lvl > 1) {
@@ -195,7 +195,7 @@ public final class App<A> {
       }
 
       try {
-        cIn = Streams.readFileBytes(in);
+        cIn = Streams.inputstreamToStream(in);
       } catch(IOException e) {
         logWithException(Level.SEVERE
           , "failed to open file input stream -> " + e.getMessage()
@@ -419,7 +419,7 @@ public final class App<A> {
 
       Coder<Byte, Boolean> primer = new BaseCoder<>(
           x -> x.flatMap(Streams::streamToBin)
-        , Streams::mapToByte);
+        , Streams::foldToBytes);
 
       App<Boolean> app = new App<Boolean>(
           cli

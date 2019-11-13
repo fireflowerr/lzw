@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
+/**
+ *  Minimal complete implementation of {@link BidiDict}
+ */
 public class Dict<A, B> extends HashMap<A, B> implements BidiDict<A, B> {
 
   /**

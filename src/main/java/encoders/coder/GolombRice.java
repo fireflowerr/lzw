@@ -13,6 +13,9 @@ public class GolombRice implements Coder<Integer, Boolean>{
   private int k;
   private int m;
 
+  /**
+   * @param k The rice parameter
+   */
   public GolombRice(int k) {
     setTunable(k);
   }
@@ -27,6 +30,11 @@ public class GolombRice implements Coder<Integer, Boolean>{
     m = acc;
   }
 
+  /**
+   * Encode a single digit using this GolombRice coder.
+   * @param x Digit to be encoded
+   * @return  Stream<Boolean> of bits
+   */
   public Stream<Boolean> encodeDigit(Integer x) {
     Stream.Builder<Boolean> ret = Stream.builder();
 
@@ -53,11 +61,21 @@ public class GolombRice implements Coder<Integer, Boolean>{
     return ret.build();
   }
 
+  /**
+   * Encode a Stream<Integer> using this GolombRice coder.
+   * @param in  Stream<Integer>
+   * @return    Stream<Boolean>
+   */
   @Override
   public Stream<Boolean> encode(Stream<Integer> in) {
     return in.flatMap(this::encodeDigit);
   }
 
+  /**
+   * Decode a stream of bits using this GolombRice coder.
+   * @param in  Stream<Boolean>
+   * @return    Stream<Integer>
+   */
   @Override
   public Stream<Integer> decode(Stream<Boolean> in) {
 

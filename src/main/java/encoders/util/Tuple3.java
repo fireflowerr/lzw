@@ -13,10 +13,6 @@ public final class Tuple3<A, B, C> {
     this.thd = thd;
   }
 
-  public Pair<B, A> flip() {
-    return new Pair<>(snd, fst);
-  }
-
   @Override
   @SuppressWarnings("unchecked")
   public boolean equals(Object o) {

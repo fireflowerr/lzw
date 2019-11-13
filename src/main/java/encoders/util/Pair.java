@@ -12,6 +12,9 @@ public final class Pair<A, B> {
     this.snd = snd;
   }
 
+  /**
+   * @return A new pair P such that P.fst = snd AND p.snd = fst
+   */
   public Pair<B, A> flip() {
     return new Pair<>(snd, fst);
   }

@@ -18,11 +18,21 @@ public class Lzw<A> implements Coder<A, Integer>{
   private BidiDict<Pair<A, Integer>, Integer> dict;
   private Optional<Runnable> counter;
 
+  /**
+   * Creates a new Lzw coder given an appropriate dictionary. If counter is non-null it will be ran
+   * once per received A to be encoded.
+   * @param dict
+   * @param counter
+   */
   public Lzw(BidiDict<Pair<A, Integer>, Integer> dict, Runnable counter) {
     this.dict = dict;
     this.counter = Optional.ofNullable(counter);
   }
 
+  /**
+   * Encodes a Stream<A> using lzw algorithm backed by provided dictionary.
+   * @return    Stream<Integer>
+   */
   @Override
   public Stream<Integer> encode(Stream<A> in) { // returns a lazily generated stream of the compressed sequence
 
@@ -59,6 +69,10 @@ public class Lzw<A> implements Coder<A, Integer>{
     return Streams.fold(gen, in);
   }
 
+  /**
+   * Decodes a Stream<A> using lzw algorithm backed by provided dictionary.
+   * @return    Stream<A>
+   */
   @Override
   public Stream<A> decode(Stream<Integer> in) { // returns a lazily generated stream of decoded words
 
@@ -95,10 +109,16 @@ public class Lzw<A> implements Coder<A, Integer>{
     return Streams.fold(gen, in);
   }
 
+  /**
+   * @return The default index value of root dictionary entries
+   */
   public static Integer getLzwBot() {
     return LZW_BOT;
   }
 
+  /**
+   * @return Byte dictionary for lzw coding.
+   */
   public static BidiDict<Pair<Byte, Integer>, Integer> getDict8() {
     int byteSz = 256;
 
@@ -111,6 +131,9 @@ public class Lzw<A> implements Coder<A, Integer>{
     return ret;
   }
 
+  /**
+   * @return Bit dictionary for lzw coding.
+   */
   public static BidiDict<Pair<Boolean, Integer>, Integer> getDict2() {
     BidiDict<Pair<Boolean, Integer>, Integer> ret = new Dict<>();
     Pair<Boolean, Integer> f = new Pair<>(false, LZW_BOT);

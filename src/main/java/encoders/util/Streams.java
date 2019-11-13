@@ -19,6 +19,11 @@ import java.util.stream.StreamSupport;
 public class Streams {
   private static final int BYTE_SZ = 8;
 
+  /**
+   * Converts a Byte into a stream of bits represented by booleans.
+   * @param b byte
+   * @return  Stream<Boolean>
+   */
   public static Stream<Boolean> streamToBin(Byte b) {
     Deque<Boolean> acc = new ArrayDeque<>();
     Stream.Builder<Boolean> ret = Stream.builder();
@@ -41,7 +46,12 @@ public class Streams {
     return ret.build();
   }
 
-  public static Stream<Byte> mapToByte(Stream<Boolean> in) {
+  /**
+   * Folds a stream of bits represented by Booleans into a Stream of bytes.
+   * @param in  bit stream
+   * @return    byte stream
+   */
+  public static Stream<Byte> foldToBytes(Stream<Boolean> in) {
     BiFunction<Boolean,Boolean,Deque<Byte>> gen = new BiFunction<Boolean,Boolean,Deque<Byte>>() {
       final static int maxDigVal = 256;
       int pow = maxDigVal;
@@ -78,8 +88,13 @@ public class Streams {
     return Streams.fold(gen, in);
   }
 
-  // Abstracts the action of contiously reading from a BufferedReader to a Stream
-  public static Stream<Byte> readFileBytes(InputStream in) throws IOException {
+  /**
+   * Abstracts the action of contiously reading from an InputStream to a lazy Stream<Byte>.
+   * @param in  backing input stream
+   * @return    Lazy Stream<Byte>
+   * @throws IOException
+   */
+  public static Stream<Byte> inputstreamToStream(InputStream in) throws IOException {
     Iterator<Byte> itr = new Iterator<Byte>() {
        int nxt = -1;
        InputStream bb = in;
@@ -129,6 +144,18 @@ public class Streams {
     });
   }
 
+  /**
+   *  Takes a BiFunction that iterates over a Stream<A> passing each element to the BiFunction as
+   *  it's first argument. The second argument describes wheather the end of the backing Stream<A>
+   *  has been reached. May return an empty passing each element to the BiFunction as it's first
+   *  argument. The second argument describes wheather the end of the backing Stream<A> has been
+   *  reached. The returned Deque will be emptied and placed into the output stream lazily. An empty
+   *  Deque may be returned and iteration will continue.
+   *
+   * @param gen generator function
+   * @param in  stream to transform
+   * @return    transformed stream
+   */
   public static <A,B> Stream<B> fold(BiFunction<A,Boolean,Deque<B>> gen, Stream<A> in) {
 
     Iterator<B> spine = new Iterator<B>() {
