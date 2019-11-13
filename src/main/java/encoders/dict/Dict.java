@@ -6,6 +6,11 @@ import java.util.Optional;
 
 public class Dict<A, B> extends HashMap<A, B> implements BidiDict<A, B> {
 
+  /**
+   * GENERATED-STUB
+   */
+  private static final long serialVersionUID = 7236607238720683668L;
+
   @Override
   public void add(A a, B b) {
     put(a, b);

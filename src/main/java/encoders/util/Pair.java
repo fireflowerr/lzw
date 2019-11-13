@@ -1,7 +1,6 @@
 package encoders.util;
+
 import java.util.Objects;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 // Instances of this class are immutable if both A and B are immutable
 public final class Pair<A, B> {

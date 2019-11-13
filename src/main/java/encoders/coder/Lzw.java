@@ -1,18 +1,15 @@
 package encoders.coder;
 
-import encoders.dict.*;
-import encoders.util.*;
-
-import java.util.Iterator;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Optional;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.Deque;
+
+import encoders.dict.BidiDict;
+import encoders.dict.Dict;
+import encoders.util.Pair;
+import encoders.util.Streams;
 
 public class Lzw<A> implements Coder<A, Integer>{
 
