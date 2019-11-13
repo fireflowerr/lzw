@@ -96,24 +96,29 @@ public class Test {
     }
   }
 
-  private String[] lzwEncodeArgs(Path f) {
+  private Pair<Path,String[]> lzwEncodeArgs(Path f) {
     String name = f.getFileName().toString();
-    return new String[] {
+    Path outPath = f.getParent()
+        .resolve(encodeDir)
+        .resolve(name + ".lzw");
+
+    return new Pair<>(outPath, new String[] {
       "java"
         ,  "-jar"
         ,  "lzw.jar"
         ,  "-f"
         , f.toString()
         , "-w"
-        , f.getParent()
-        .resolve(encodeDir)
-        .resolve(name + "$" + "lzw").toString()
-    };
+        , outPath.toString()
+    });
   }
 
-  private String[] lzwDecodeArgs(Path f) {
-    String name = f.getFileName().toString();
-    return new String[] {
+  private Pair<Path,String[]> lzwDecodeArgs(Path f) {
+    String name = f.getFileName().toString() + ".dec";
+    Path outPath = f.getParent().getParent()
+        .resolve(decodeDir)
+        .resolve(name);
+    return new Pair<>(outPath, new String[] {
         "java"
       ,  "-jar"
       ,  "lzw.jar"
@@ -121,41 +126,41 @@ public class Test {
       ,  "-f"
       , f.toString()
       , "-w"
-      , f.getParent().getParent()
-            .resolve(decodeDir)
-            .resolve(name).toString()
-    };
+      , outPath.toString()
+    });
   }
 
-  private String[] winzipEncodeArgs(Path f) {
+  private Pair<Path,String[]> winzipEncodeArgs(Path f) {
     String name = f.getFileName().toString();
-    return new String[] {
-        "wzzip.exe"
-      , "-a"
-      , f.getParent()
-            .resolve(encodeDir)
-            .resolve(name + "$" + "winzip").toString()
+    Path outPath = f.getParent()
+        .resolve(encodeDir)
+        .resolve(name + "$" + "winzip");
+    return new Pair<>(outPath, new String[] {
+        "7z.exe"
+      , "a"
+      , outPath.toString()
       , f.toString()
-    };
+    });
   }
 
-  private String[] winzipDecodeArgs(Path f) {
-    String name = f.getFileName().toString();
-    return new String[] {
-        "wzunzip"
+  private Pair<Path,String[]> winzipDecodeArgs(Path f) {
+    String name = f.getFileName().toString() + ".dec";
+    Path outPath = f.getParent().getParent()
+        .resolve(decodeDir)
+        .resolve(name);
+    return new Pair<>(outPath, new String[] {
+        "7z.exe"
       ,  "-d"
       , "-d"
       , f.toString()
-      , f.getParent().getParent()
-            .resolve(decodeDir)
-            .resolve(name).toString()
-    };
+      , outPath.toString()
+    });
   }
 
   private void runTest(List<Tuple3<
       String
-    , Function<Path, String[]>
-    , Function<Path, String[]>>> executors) {
+    , Function<Path, Pair<Path,String[]>>
+    , Function<Path, Pair<Path,String[]>>>> executors) {
 
     Iterator<Path> itr = null;
     try {
@@ -172,7 +177,7 @@ public class Test {
     String fileField = "%-" + nameMaxLengh + "s  ";
     String formatter = fileField + "%-8s%-8s%-8.2f %-3s  %8.2fs %-3s  %6.2f%n";
     System.out.printf(fileField + "%-8s%-8s%-16s%-15s%s%n", "FILE", "RUNNER", "STATUS", "IN SIZE", "OUT SIZE", "CR");
-    Tuple3<String, Function<Path, String[]>, Function<Path, String[]>> head = executors.remove(0);
+    Tuple3<String, Function<Path, Pair<Path,String[]>>, Function<Path, Pair<Path,String[]>>> head = executors.remove(0);
     while(itr.hasNext()) {
       Path p = itr.next();
       String fName = formatName(p.getFileName().toString());
@@ -185,8 +190,8 @@ public class Test {
     , Path p
     , String fName
     , String runnerName
-    , Function<Path, String[]> getEnArgs
-    , Function<Path, String[]> getDeArgs) {
+    , Function<Path, Pair<Path,String[]>> getEnArgs
+    , Function<Path, Pair<Path,String[]>> getDeArgs) {
 
     boolean pass = true;
     String inHash = null;
@@ -204,9 +209,9 @@ public class Test {
       }
     }
 
-    String[] enArgs = getEnArgs.apply(p);
+    Pair<Path,String[]> enArgs = getEnArgs.apply(p);
     try {
-      RUNTIME.exec(enArgs).waitFor();
+      RUNTIME.exec(enArgs.snd).waitFor();
     } catch(Exception e) {
       LOGGER.log(Level.SEVERE
           , "external encoding invocation failed to execute -> " + e.getMessage()
@@ -215,11 +220,9 @@ public class Test {
     }
 
     // decode
-    int tmp = enArgs.length - 1;
-    Path enPath = Paths.get(enArgs[tmp]);
-    String[] deArgs = getDeArgs.apply(enPath);
+    Pair<Path,String[]> deArgs = getDeArgs.apply(enArgs.fst);
     try {
-      RUNTIME.exec(deArgs).waitFor();
+      RUNTIME.exec(deArgs.snd).waitFor();
     } catch(Exception e) {
       LOGGER.log(Level.SEVERE
           , "external decoding invocation failed to execute -> " + e.getMessage()
@@ -227,8 +230,7 @@ public class Test {
       pass = false;
     }
 
-    tmp = deArgs.length - 1;
-    String outHash = writeMD5(Paths.get(deArgs[tmp]));
+    String outHash = writeMD5(deArgs.fst);
     pass = pass && inHash.equals(outHash);
     String status = pass ? "PASS" : "FAIL";
 
@@ -237,7 +239,7 @@ public class Test {
       long outSz = 0;
       try {
         inSz = Files.size(p);
-        outSz = Files.size(enPath);
+        outSz = Files.size(enArgs.fst);
       } catch(IOException e) {
         LOGGER.log(Level.SEVERE, "cannot fetch file size -> " + e.getMessage(), e);
       }
@@ -343,7 +345,7 @@ public class Test {
 
   public static void main(String[] args) {
     Test app = new Test(args);
-    List<Tuple3<String, Function<Path, String[]>, Function<Path, String[]>>> l = new ArrayList<>();
+    List<Tuple3<String, Function<Path, Pair<Path, String[]>>, Function<Path, Pair<Path,String[]>>>> l = new ArrayList<>();
     l.add(new Tuple3<>("lzw", app::lzwEncodeArgs, app::lzwDecodeArgs));
     l.add(new Tuple3<>("wzip", app::winzipEncodeArgs, app::winzipDecodeArgs));
 //    TODO add winzip arg generators
