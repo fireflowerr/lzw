@@ -1,0 +1,9 @@
+The Canterbury Corpus - http://corpus.canterbury.ac.nz/descriptions/
+  E.coli
+  bible.txt
+  world192.txt
+
+
+ - http://imagecompression.info/test_images/
+  artificial.ppm
+  flower_foveon.ppm

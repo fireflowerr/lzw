@@ -1,0 +1,10 @@
+The test runner is implemented by creating md5 checksum for each original file,
+and each file that has been encoded and decoded. If the md5 checksum matches
+the original, success is emitted along with statistics, else emits failure. To
+successfully execute the test runner both lzw.jar and 7z.exe must be on system
+path (you can put in current directory or add to system path variable).
+
+Usage: java -jar lzw-test.jar *test directory* [optional --logging]
+Example: java -jar lzw-test.jar ../test (if cd is target)
+
+7-zip: https://www.7-zip.org/download.html

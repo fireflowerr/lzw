@@ -1,0 +1,12 @@
+WINDOWS NATIVE
+1. open comand propmt and navigate to project directory
+2. make.bat
+
+
+CROSS PLATFORM (requires Apache Maven)
+1. open comand propmt or terminal and navigate to project directory
+2. mvn clean install
+
+OUTPUTS:
+  target/lzw.jar (compressor)
+  target/lzw-test.jar (test runner)

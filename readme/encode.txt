@@ -1,0 +1,3 @@
+See lzw-man.pdf for detailed usage info.
+1.  cd to build directory (target)
+2.  java -jar lzw.jar -f *target file* [optional -w *output file]
